@@ -23,6 +23,12 @@ class VideoCard extends StatelessWidget {
     final double width = cardWidth ?? 120.0;
     final double height = width * 1.5; // 2:3 比例
     
+    // 缓存计算结果
+    final bool shouldShowEpisodeInfo = _shouldShowEpisodeInfo();
+    final bool shouldShowProgress = _shouldShowProgress();
+    final String episodeText = shouldShowEpisodeInfo ? _getEpisodeText() : '';
+    final String imageUrl = _getImageUrl(videoInfo.cover, videoInfo.source);
+    
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -51,8 +57,20 @@ class VideoCard extends StatelessWidget {
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(8),
                     child: Image.network(
-                      _getImageUrl(videoInfo.cover, videoInfo.source),
+                      imageUrl,
                       fit: BoxFit.cover,
+                      // 添加缓存配置
+                      cacheWidth: (width * MediaQuery.of(context).devicePixelRatio).round(),
+                      cacheHeight: (height * MediaQuery.of(context).devicePixelRatio).round(),
+                      // 优化加载性能
+                      frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
+                        if (wasSynchronouslyLoaded) return child;
+                        return AnimatedOpacity(
+                          opacity: frame == null ? 0 : 1,
+                          duration: const Duration(milliseconds: 200),
+                          child: child,
+                        );
+                      },
                       errorBuilder: (context, error, stackTrace) {
                         return Container(
                           color: Colors.grey[300],
@@ -101,7 +119,7 @@ class VideoCard extends StatelessWidget {
                       ),
                     ),
                   )
-                else if (_shouldShowEpisodeInfo())
+                else if (shouldShowEpisodeInfo)
                   Positioned(
                     top: 8,
                     right: 8,
@@ -112,7 +130,7 @@ class VideoCard extends StatelessWidget {
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
-                        _getEpisodeText(),
+                        episodeText,
                         style: GoogleFonts.poppins(
                           color: Colors.white,
                           fontSize: 12,
@@ -122,7 +140,7 @@ class VideoCard extends StatelessWidget {
                     ),
                   ),
                 // 进度条
-                if (_shouldShowProgress())
+                if (shouldShowProgress)
                   Positioned(
                     bottom: 0,
                     left: 0,

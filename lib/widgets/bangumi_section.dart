@@ -1,18 +1,19 @@
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
 import '../models/bangumi.dart';
 import '../models/play_record.dart';
 import '../models/video_info.dart';
+import '../services/page_cache_service.dart';
 import 'recommendation_section.dart';
 
 /// 新番放送组件
 class BangumiSection extends StatefulWidget {
   final Function(PlayRecord)? onBangumiTap;
+  final VoidCallback? onMoreTap;
 
   const BangumiSection({
     super.key,
     this.onBangumiTap,
+    this.onMoreTap,
   });
 
   @override
@@ -23,18 +24,12 @@ class _BangumiSectionState extends State<BangumiSection> {
   List<BangumiItem> _bangumiItems = [];
   bool _isLoading = true;
   bool _hasError = false;
+  final PageCacheService _cacheService = PageCacheService();
 
   @override
   void initState() {
     super.initState();
     _loadBangumiCalendar();
-  }
-
-  /// 获取当前星期几
-  int _getCurrentWeekday() {
-    final now = DateTime.now();
-    // 返回1-7，1为星期一，7为星期日
-    return now.weekday;
   }
 
   /// 加载新番放送数据
@@ -45,55 +40,14 @@ class _BangumiSectionState extends State<BangumiSection> {
         _hasError = false;
       });
 
-      const apiUrl = 'https://api.bgm.tv/calendar';
-      final headers = {
-        'User-Agent': 'senshinya/selene/1.0.0 (Android) (http://github.com/senshinya/selene)',
-        'Accept': 'application/json',
-      };
+      // 使用缓存服务获取数据
+      final bangumiItems = await _cacheService.getBangumiCalendar(context);
 
-      final response = await http.get(
-        Uri.parse(apiUrl),
-        headers: headers,
-      ).timeout(const Duration(seconds: 30));
-
-      if (response.statusCode == 200) {
-        try {
-          // 解析JSON响应
-          final List<dynamic> responseData = json.decode(response.body);
-          
-          // 解析所有星期数据
-          final List<BangumiCalendarResponse> calendarData = responseData
-              .map((item) => BangumiCalendarResponse.fromJson(item as Map<String, dynamic>))
-              .toList();
-          
-          // 获取当前星期几的数据
-          final currentWeekday = _getCurrentWeekday();
-          BangumiCalendarResponse? currentDayData;
-          
-          for (final dayData in calendarData) {
-            if (dayData.weekday.id == currentWeekday) {
-              currentDayData = dayData;
-              break;
-            }
-          }
-
-          if (currentDayData != null) {
-            setState(() {
-              _bangumiItems = currentDayData!.items;
-              _isLoading = false;
-            });
-          } else {
-            setState(() {
-              _hasError = true;
-              _isLoading = false;
-            });
-          }
-        } catch (parseError) {
-          setState(() {
-            _hasError = true;
-            _isLoading = false;
-          });
-        }
+      if (bangumiItems != null) {
+        setState(() {
+          _bangumiItems = bangumiItems;
+          _isLoading = false;
+        });
       } else {
         setState(() {
           _hasError = true;
@@ -131,9 +85,7 @@ class _BangumiSectionState extends State<BangumiSection> {
     return RecommendationSection(
       title: '新番放送',
       moreText: '查看更多 >',
-      onMoreTap: () {
-        // TODO: 实现跳转到新番列表页面
-      },
+      onMoreTap: widget.onMoreTap,
       videoInfos: _convertToVideoInfos(),
       onItemTap: (videoInfo) {
         // 转换为PlayRecord用于回调

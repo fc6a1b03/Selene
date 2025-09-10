@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../widgets/favorites_grid.dart';
+import '../models/play_record.dart';
 
 /// 收藏夹页面
 class FavoritesScreen extends StatelessWidget {
@@ -39,34 +41,24 @@ class FavoritesScreen extends StatelessWidget {
             stops: [0.0, 0.18, 0.38, 0.60, 0.80, 1.0],
           ),
         ),
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.favorite_border,
-                size: 64,
-                color: const Color(0xFF2c3e50).withOpacity(0.3),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                '收藏夹功能',
-                style: GoogleFonts.poppins(
-                  fontSize: 24,
-                  fontWeight: FontWeight.w300,
-                  color: const Color(0xFF2c3e50),
+        child: FavoritesGrid(
+          onVideoTap: (PlayRecord playRecord) {
+            // TODO: 实现视频播放逻辑
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  '播放: ${playRecord.title}',
+                  style: GoogleFonts.poppins(color: Colors.white),
                 ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                '即将上线...',
-                style: GoogleFonts.poppins(
-                  fontSize: 16,
-                  color: const Color(0xFF7f8c8d),
+                backgroundColor: const Color(0xFF27ae60),
+                behavior: SnackBarBehavior.floating,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
                 ),
+                margin: const EdgeInsets.all(16),
               ),
-            ],
-          ),
+            );
+          },
         ),
       ),
     );

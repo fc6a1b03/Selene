@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../models/play_record.dart';
@@ -105,7 +106,10 @@ class RecommendationSection extends StatelessWidget {
         final double padding = 32.0; // 左右padding (16 * 2)
         final double spacing = 12.0; // 卡片间距
         final double availableWidth = screenWidth - padding;
-        final double cardWidth = (availableWidth - (spacing * (cardCount - 1))) / cardCount;
+        // 确保最小宽度，防止负宽度约束
+        final double minCardWidth = 120.0; // 最小卡片宽度
+        final double calculatedCardWidth = (availableWidth - (spacing * (cardCount - 1))) / cardCount;
+        final double cardWidth = math.max(calculatedCardWidth, minCardWidth);
         
         return SizedBox(
           height: (cardWidth * 1.5) + 50, // 动态计算高度
@@ -165,7 +169,10 @@ class RecommendationSection extends StatelessWidget {
         final double padding = 32.0; // 左右padding (16 * 2)
         final double spacing = 12.0; // 卡片间距
         final double availableWidth = screenWidth - padding;
-        final double cardWidth = (availableWidth - (spacing * (cardCount - 1))) / cardCount;
+        // 确保最小宽度，防止负宽度约束
+        final double minCardWidth = 120.0; // 最小卡片宽度
+        final double calculatedCardWidth = (availableWidth - (spacing * (cardCount - 1))) / cardCount;
+        final double cardWidth = math.max(calculatedCardWidth, minCardWidth);
         
         return Container(
           height: (cardWidth * 1.5) + 50,

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../services/theme_service.dart';
 
 class MainLayout extends StatelessWidget {
@@ -101,9 +102,10 @@ class MainLayout extends StatelessWidget {
                     },
                     child: Center(
                       child: Icon(
-                        Icons.search,
+                        LucideIcons.search,
                         color: const Color(0xFF2c3e50),
                         size: 24,
+                        weight: 1.0,
                       ),
                     ),
                   ),
@@ -147,9 +149,10 @@ class MainLayout extends StatelessWidget {
                         },
                         child: Center(
                           child: Icon(
-                            themeService.isDarkMode ? Icons.light_mode : Icons.dark_mode,
+                            LucideIcons.moon,
                             color: const Color(0xFF2c3e50),
                             size: 24,
+                            weight: 1.0,
                           ),
                         ),
                       ),
@@ -175,9 +178,10 @@ class MainLayout extends StatelessWidget {
                         },
                         child: Center(
                           child: Icon(
-                            Icons.person,
+                            LucideIcons.user,
                             color: const Color(0xFF2c3e50),
                             size: 24,
+                            weight: 1.0,
                           ),
                         ),
                       ),
@@ -194,11 +198,11 @@ class MainLayout extends StatelessWidget {
 
   Widget _buildBottomNavBar() {
     final List<Map<String, dynamic>> navItems = [
-      {'icon': Icons.home, 'label': '首页'},
-      {'icon': Icons.movie, 'label': '电影'},
-      {'icon': Icons.tv, 'label': '剧集'},
-      {'icon': Icons.pets, 'label': '动漫'},
-      {'icon': Icons.mic, 'label': '综艺'},
+      {'icon': LucideIcons.house, 'label': '首页'},
+      {'icon': LucideIcons.video, 'label': '电影'},
+      {'icon': LucideIcons.tv, 'label': '剧集'},
+      {'icon': LucideIcons.cat, 'label': '动漫'},
+      {'icon': LucideIcons.clover, 'label': '综艺'},
     ];
 
     return Container(

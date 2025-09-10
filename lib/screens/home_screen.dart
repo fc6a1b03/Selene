@@ -25,52 +25,37 @@ class _HomeScreenState extends State<HomeScreen> {
   int _currentBottomNavIndex = 0;
   String _selectedTopTab = '首页';
 
+  // 预加载所有页面，使用IndexedStack保持状态
+  late final List<Widget> _pages;
+
   @override
   void initState() {
     super.initState();
+    _initializePages();
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return MainLayout(
-      content: _buildMainContent(),
-      currentBottomNavIndex: _currentBottomNavIndex,
-      onBottomNavChanged: _onBottomNavChanged,
-      selectedTopTab: _selectedTopTab,
-      onTopTabChanged: _onTopTabChanged,
-    );
+  void _initializePages() {
+    _pages = [
+      const SizedBox.shrink(), // 首页内容由 _buildHomeContentForTab 动态生成
+      const MoviesScreen(),
+      const SeriesScreen(),
+      const AnimeScreen(),
+      const VarietyScreen(),
+    ];
   }
 
-
-  Widget _buildMainContent() {
-    // 根据底部导航栏选择显示不同的页面内容
-    switch (_currentBottomNavIndex) {
-      case 0: // 首页
-        return _buildHomeContent();
-      case 1: // 电影
-        return const MoviesScreen();
-      case 2: // 剧集
-        return const SeriesScreen();
-      case 3: // 动漫
-        return const AnimeScreen();
-      case 4: // 综艺
-        return const VarietyScreen();
-      default:
-        return _buildHomeContent();
-    }
-  }
-
-  Widget _buildHomeContent() {
+  /// 重新构建首页内容（用于顶部标签切换）
+  Widget _buildHomeContentForTab(String tab) {
     return SingleChildScrollView(
       child: Column(
         children: [
           // 顶部导航栏
           TopTabSwitcher(
-            selectedTab: _selectedTopTab,
+            selectedTab: tab,
             onTabChanged: _onTopTabChanged,
           ),
           // 根据选中的标签显示不同内容
-          _selectedTopTab == '首页'
+          tab == '首页'
               ? Column(
                   children: [
                     const SizedBox(height: 20),
@@ -81,18 +66,22 @@ class _HomeScreenState extends State<HomeScreen> {
                     // 热门电影组件
                     HotMoviesSection(
                       onMovieTap: _onVideoTap,
+                      onMoreTap: () => _onBottomNavChanged(1), // 切换到电影页面
                     ),
                     // 热门剧集组件
                     HotTvSection(
                       onTvTap: _onVideoTap,
+                      onMoreTap: () => _onBottomNavChanged(2), // 切换到剧集页面
                     ),
                     // 新番放送组件
                     BangumiSection(
                       onBangumiTap: _onVideoTap,
+                      onMoreTap: () => _onBottomNavChanged(3), // 切换到动漫页面
                     ),
                     // 热门综艺组件
                     HotShowSection(
                       onShowTap: _onVideoTap,
+                      onMoreTap: () => _onBottomNavChanged(4), // 切换到综艺页面
                     ),
                   ],
                 )
@@ -108,6 +97,24 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
+
+  @override
+  Widget build(BuildContext context) {
+    return MainLayout(
+      content: _currentBottomNavIndex == 0 
+          ? _buildHomeContentForTab(_selectedTopTab)
+          : IndexedStack(
+              index: _currentBottomNavIndex,
+              children: _pages,
+            ),
+      currentBottomNavIndex: _currentBottomNavIndex,
+      onBottomNavChanged: _onBottomNavChanged,
+      selectedTopTab: _selectedTopTab,
+      onTopTabChanged: _onTopTabChanged,
+    );
+  }
+
+
 
   /// 处理底部导航栏切换
   void _onBottomNavChanged(int index) {

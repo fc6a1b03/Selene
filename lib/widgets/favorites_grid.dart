@@ -1,10 +1,11 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../models/favorite_item.dart';
 import '../widgets/video_card.dart';
 import '../models/play_record.dart';
 import '../models/video_info.dart';
-import '../services/api_service.dart';
+import '../services/page_cache_service.dart';
 
 class FavoritesGrid extends StatefulWidget {
   final Function(PlayRecord) onVideoTap;
@@ -26,6 +27,7 @@ class _FavoritesGridState extends State<FavoritesGrid>
   String? _errorMessage;
   late AnimationController _shimmerController;
   late Animation<double> _shimmerAnimation;
+  final PageCacheService _cacheService = PageCacheService();
 
   @override
   void initState() {
@@ -58,14 +60,30 @@ class _FavoritesGridState extends State<FavoritesGrid>
     });
 
     try {
-      // 同时加载收藏夹和播放记录
-      await Future.wait([
-        _loadFavorites(),
-        _loadPlayRecords(),
-      ]);
-      setState(() {
-        _isLoading = false;
-      });
+      // 先尝试从缓存获取收藏夹数据
+      final cachedFavorites = _cacheService.getCache<List<FavoriteItem>>('favorites');
+      final cachedPlayRecords = _cacheService.getCache<List<PlayRecord>>('play_records');
+      
+      if (cachedFavorites != null && cachedPlayRecords != null) {
+        // 有缓存数据，立即显示
+        setState(() {
+          _favorites = cachedFavorites;
+          _playRecords = cachedPlayRecords;
+          _isLoading = false;
+        });
+        
+        // 异步获取最新数据
+        _refreshDataInBackground();
+      } else {
+        // 没有完整缓存，从API获取
+        await Future.wait([
+          _loadFavorites(),
+          _loadPlayRecords(),
+        ]);
+        setState(() {
+          _isLoading = false;
+        });
+      }
     } catch (e) {
       setState(() {
         _errorMessage = e.toString();
@@ -74,21 +92,103 @@ class _FavoritesGridState extends State<FavoritesGrid>
     }
   }
 
+  /// 后台刷新数据
+  Future<void> _refreshDataInBackground() async {
+    try {
+      // 分别刷新收藏夹和播放记录数据
+      final futures = <Future>[];
+      
+      // 刷新收藏夹数据
+      futures.add(_refreshFavorites());
+      
+      // 刷新播放记录数据
+      futures.add(_refreshPlayRecords());
+      
+      await Future.wait(futures);
+    } catch (e) {
+      // 后台刷新失败，静默处理，保持原有数据
+    }
+  }
+
+  /// 刷新收藏夹数据
+  Future<void> _refreshFavorites() async {
+    try {
+      final favorites = await _cacheService.refreshFavorites(context);
+      
+      if (favorites != null && mounted) {
+        // 只有当新数据与当前数据不同时才更新UI
+        if (_favorites.length != favorites.length || 
+            !_isSameFavorites(_favorites, favorites)) {
+          setState(() {
+            _favorites = favorites;
+          });
+        }
+      }
+      // 如果刷新失败，保持原有数据不变
+    } catch (e) {
+      // 刷新失败，静默处理，保持原有数据
+    }
+  }
+
+  /// 刷新播放记录数据
+  Future<void> _refreshPlayRecords() async {
+    try {
+      final records = await _cacheService.refreshPlayRecords(context);
+      
+      if (records != null && mounted) {
+        // 只有当新数据与当前数据不同时才更新UI
+        if (_playRecords.length != records.length || 
+            !_isSamePlayRecords(_playRecords, records)) {
+          setState(() {
+            _playRecords = records;
+          });
+        }
+      }
+      // 如果刷新失败，保持原有数据不变
+    } catch (e) {
+      // 刷新失败，静默处理，保持原有数据
+    }
+  }
+
+  /// 比较两个收藏夹列表是否相同
+  bool _isSameFavorites(List<FavoriteItem> list1, List<FavoriteItem> list2) {
+    if (list1.length != list2.length) return false;
+    
+    for (int i = 0; i < list1.length; i++) {
+      if (list1[i].id != list2[i].id || 
+          list1[i].source != list2[i].source ||
+          list1[i].saveTime != list2[i].saveTime) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  /// 比较两个播放记录列表是否相同
+  bool _isSamePlayRecords(List<PlayRecord> list1, List<PlayRecord> list2) {
+    if (list1.length != list2.length) return false;
+    
+    for (int i = 0; i < list1.length; i++) {
+      if (list1[i].id != list2[i].id || 
+          list1[i].source != list2[i].source ||
+          list1[i].saveTime != list2[i].saveTime) {
+        return false;
+      }
+    }
+    return true;
+  }
+
   Future<void> _loadFavorites() async {
     try {
-      final response = await ApiService.getFavorites(context);
+      // 使用缓存服务获取数据
+      final favorites = await _cacheService.getFavorites(context);
       
-      if (response.success && response.data != null) {
-        // 过滤掉origin为"live"的项目
-        final filteredFavorites = response.data!
-            .where((favorite) => favorite.origin != 'live')
-            .toList();
-        
+      if (favorites != null) {
         setState(() {
-          _favorites = filteredFavorites;
+          _favorites = favorites;
         });
       } else {
-        throw Exception(response.message ?? '获取收藏夹失败');
+        throw Exception('获取收藏夹失败');
       }
     } catch (e) {
       throw Exception('获取收藏夹失败: $e');
@@ -97,31 +197,15 @@ class _FavoritesGridState extends State<FavoritesGrid>
 
   Future<void> _loadPlayRecords() async {
     try {
-      final response = await ApiService.get<Map<String, dynamic>>(
-        '/api/playrecords',
-        context: context,
-      );
+      // 使用缓存服务获取数据
+      final records = await _cacheService.getPlayRecords(context);
 
-      if (response.success && response.data != null) {
-        final records = <PlayRecord>[];
-        
-        // 将Map转换为PlayRecord列表
-        response.data!.forEach((key, data) {
-          try {
-            records.add(PlayRecord.fromJson(key, data));
-          } catch (e) {
-            // 忽略解析失败的记录
-          }
-        });
-
-        // 按save_time降序排列
-        records.sort((a, b) => b.saveTime.compareTo(a.saveTime));
-
+      if (records != null) {
         setState(() {
           _playRecords = records;
         });
       } else {
-        throw Exception(response.message ?? '获取播放记录失败');
+        throw Exception('获取播放记录失败');
       }
     } catch (e) {
       throw Exception('获取播放记录失败: $e');
@@ -183,7 +267,10 @@ class _FavoritesGridState extends State<FavoritesGrid>
           final double padding = 16.0; // 左右padding
           final double spacing = 12.0; // 列间距
           final double availableWidth = screenWidth - (padding * 2) - (spacing * 2); // 减去padding和间距
-          final double itemWidth = availableWidth / 3; // 每列宽度
+          // 确保最小宽度，防止负宽度约束
+          final double minItemWidth = 80.0; // 最小项目宽度
+          final double calculatedItemWidth = availableWidth / 3;
+          final double itemWidth = math.max(calculatedItemWidth, minItemWidth);
           final double itemHeight = itemWidth * 1.9; // 进一步增加高度比例，确保有足够空间避免溢出
           
           return GridView.builder(
@@ -194,7 +281,7 @@ class _FavoritesGridState extends State<FavoritesGrid>
               crossAxisCount: 3, // 严格3列布局
               childAspectRatio: itemWidth / itemHeight, // 精确计算宽高比
               crossAxisSpacing: spacing, // 列间距
-              mainAxisSpacing: 20, // 增加行间距
+              mainAxisSpacing: 32, // 增加行间距
             ),
             itemCount: 6, // 显示6个骨架卡片
             itemBuilder: (context, index) {
@@ -370,7 +457,10 @@ class _FavoritesGridState extends State<FavoritesGrid>
           final double padding = 16.0; // 左右padding
           final double spacing = 12.0; // 列间距
           final double availableWidth = screenWidth - (padding * 2) - (spacing * 2); // 减去padding和间距
-          final double itemWidth = availableWidth / 3; // 每列宽度
+          // 确保最小宽度，防止负宽度约束
+          final double minItemWidth = 80.0; // 最小项目宽度
+          final double calculatedItemWidth = availableWidth / 3;
+          final double itemWidth = math.max(calculatedItemWidth, minItemWidth);
           final double itemHeight = itemWidth * 1.9; // 进一步增加高度比例，确保有足够空间避免溢出
           
           return GridView.builder(
@@ -381,7 +471,7 @@ class _FavoritesGridState extends State<FavoritesGrid>
               crossAxisCount: 3, // 严格3列布局
               childAspectRatio: itemWidth / itemHeight, // 精确计算宽高比
               crossAxisSpacing: spacing, // 列间距
-              mainAxisSpacing: 20, // 增加行间距
+              mainAxisSpacing: 32, // 增加行间距
             ),
             itemCount: _favorites.length,
             itemBuilder: (context, index) {

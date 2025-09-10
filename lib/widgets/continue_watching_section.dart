@@ -1,8 +1,10 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../models/play_record.dart';
 import '../models/video_info.dart';
 import '../services/api_service.dart';
+import '../services/page_cache_service.dart';
 import 'video_card.dart';
 
 /// 继续观看组件
@@ -27,12 +29,13 @@ class _ContinueWatchingSectionState extends State<ContinueWatchingSection>
   bool _hasError = false;
   late AnimationController _shimmerController;
   late Animation<double> _shimmerAnimation;
+  final PageCacheService _cacheService = PageCacheService();
 
   @override
   void initState() {
     super.initState();
     _shimmerController = AnimationController(
-      duration: const Duration(milliseconds: 1500),
+      duration: const Duration(milliseconds: 1200), // 减少动画时长
       vsync: this,
     );
     _shimmerAnimation = Tween<double>(
@@ -40,10 +43,16 @@ class _ContinueWatchingSectionState extends State<ContinueWatchingSection>
       end: 1.0,
     ).animate(CurvedAnimation(
       parent: _shimmerController,
-      curve: Curves.easeInOut,
+      curve: Curves.linear, // 使用线性曲线减少计算复杂度
     ));
     _shimmerController.repeat();
-    _loadPlayRecords();
+    
+    // 延迟执行异步操作，确保 initState 完成后再访问 context
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _loadPlayRecords();
+      }
+    });
   }
 
   @override
@@ -54,48 +63,135 @@ class _ContinueWatchingSectionState extends State<ContinueWatchingSection>
 
   /// 加载播放记录
   Future<void> _loadPlayRecords() async {
+    if (!mounted) return;
+    
     try {
-      setState(() {
-        _isLoading = true;
-        _hasError = false;
-      });
-
-      final response = await ApiService.get<Map<String, dynamic>>(
-        '/api/playrecords',
-        context: context,
-      );
-
-      if (response.success && response.data != null) {
-        final records = <PlayRecord>[];
-        
-        // 将Map转换为PlayRecord列表
-        response.data!.forEach((id, data) {
-          try {
-            records.add(PlayRecord.fromJson(id, data));
-          } catch (e) {
-            // 忽略解析失败的记录
-          }
-        });
-
-        // 按save_time降序排列
-        records.sort((a, b) => b.saveTime.compareTo(a.saveTime));
-
+      if (mounted) {
         setState(() {
-          _playRecords = records;
-          _isLoading = false;
+          _isLoading = true;
+          _hasError = false;
         });
+      }
+
+      // 先尝试从缓存获取数据
+      final cachedRecords = _cacheService.getCache<List<PlayRecord>>('play_records');
+      
+      if (cachedRecords != null) {
+        // 有缓存数据，立即显示
+        if (mounted) {
+          setState(() {
+            _playRecords = cachedRecords;
+            _isLoading = false;
+          });
+        }
+        
+        // 预加载图片
+        if (mounted) {
+          _preloadImages(cachedRecords);
+        }
+        
+        // 异步获取最新数据
+        _refreshDataInBackground();
       } else {
+        // 没有缓存，从API获取
+        final records = await _cacheService.getPlayRecords(context);
+
+        if (mounted) {
+          if (records != null) {
+            setState(() {
+              _playRecords = records;
+              _isLoading = false;
+            });
+            
+            // 预加载图片
+            _preloadImages(records);
+          } else {
+            setState(() {
+              _hasError = true;
+              _isLoading = false;
+            });
+          }
+        }
+      }
+    } catch (e) {
+      if (mounted) {
         setState(() {
           _hasError = true;
           _isLoading = false;
         });
       }
-    } catch (e) {
-      setState(() {
-        _hasError = true;
-        _isLoading = false;
-      });
     }
+  }
+
+  /// 后台刷新数据
+  Future<void> _refreshDataInBackground() async {
+    if (!mounted) return;
+    
+    try {
+      // 只刷新播放记录数据
+      final records = await _cacheService.refreshPlayRecords(context);
+      
+      if (records != null && mounted) {
+        // 只有当新数据与当前数据不同时才更新UI
+        if (_playRecords.length != records.length || 
+            !_isSamePlayRecords(_playRecords, records)) {
+          if (mounted) {
+            setState(() {
+              _playRecords = records;
+            });
+            
+            // 预加载新图片
+            _preloadImages(records);
+          }
+        }
+      }
+      // 如果刷新失败，保持原有数据不变，不更新UI
+    } catch (e) {
+      // 后台刷新失败，静默处理，保持原有数据
+    }
+  }
+
+  /// 比较两个播放记录列表是否相同
+  bool _isSamePlayRecords(List<PlayRecord> list1, List<PlayRecord> list2) {
+    if (list1.length != list2.length) return false;
+    
+    for (int i = 0; i < list1.length; i++) {
+      if (list1[i].id != list2[i].id || 
+          list1[i].source != list2[i].source ||
+          list1[i].saveTime != list2[i].saveTime) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  /// 预加载图片
+  void _preloadImages(List<PlayRecord> records) {
+    if (!mounted) return;
+    
+    // 只预加载前几个图片，避免过度预加载
+    final int preloadCount = math.min(records.length, 5);
+    for (int i = 0; i < preloadCount; i++) {
+      if (!mounted) break;
+      
+      final record = records[i];
+      final imageUrl = _getImageUrl(record.cover, record.source);
+      if (imageUrl.isNotEmpty) {
+        precacheImage(NetworkImage(imageUrl), context);
+      }
+    }
+  }
+
+  /// 获取处理后的图片URL
+  String _getImageUrl(String originalUrl, String? source) {
+    if (source == 'douban' && originalUrl.isNotEmpty) {
+      // 将豆瓣图片域名替换为新的域名
+      return originalUrl.replaceAll(
+        RegExp(r'https?://[^/]+\.doubanio\.com'),
+        'https://img.doubanio.cmliussss.net'
+      );
+    }
+    return originalUrl;
   }
 
   /// 显示清空确认弹窗
@@ -328,20 +424,28 @@ class _ContinueWatchingSectionState extends State<ContinueWatchingSection>
               builder: (context, constraints) {
                 // 计算卡片宽度，确保能显示2.75个卡片
                 final double screenWidth = constraints.maxWidth;
-                final double padding = 32.0; // 左右padding (16 * 2)
-                final double spacing = 12.0; // 卡片间距
+                const double padding = 32.0; // 左右padding (16 * 2)
+                const double spacing = 12.0; // 卡片间距
                 final double availableWidth = screenWidth - padding;
-                final double cardWidth = (availableWidth - (spacing * 1.75)) / 2.75; // 确保2.75个卡片能放下
+                // 确保最小宽度，防止负宽度约束
+                const double minCardWidth = 120.0; // 最小卡片宽度
+                final double calculatedCardWidth = (availableWidth - (spacing * 1.75)) / 2.75;
+                final double cardWidth = math.max(calculatedCardWidth, minCardWidth);
+                final double cardHeight = (cardWidth * 1.5) + 50; // 缓存高度计算
                 
                 return SizedBox(
-                  height: (cardWidth * 1.5) + 50, // 动态计算高度：图片高度 + 文字区域高度
+                  height: cardHeight, // 使用缓存的高度
                   child: ListView.builder(
                     scrollDirection: Axis.horizontal,
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     itemCount: _playRecords.length,
+                    // 优化性能：添加itemExtent和缓存范围
+                    itemExtent: cardWidth + spacing,
+                    cacheExtent: (cardWidth + spacing) * 3, // 缓存3个item的范围
                     itemBuilder: (context, index) {
                       final playRecord = _playRecords[index];
                       return Container(
+                        width: cardWidth,
                         margin: EdgeInsets.only(
                           right: index < _playRecords.length - 1 ? spacing : 0,
                         ),
@@ -368,13 +472,17 @@ class _ContinueWatchingSectionState extends State<ContinueWatchingSection>
       builder: (context, constraints) {
         // 计算卡片宽度，确保能显示2.75个卡片
         final double screenWidth = constraints.maxWidth;
-        final double padding = 32.0; // 左右padding (16 * 2)
-        final double spacing = 12.0; // 卡片间距
+        const double padding = 32.0; // 左右padding (16 * 2)
+        const double spacing = 12.0; // 卡片间距
         final double availableWidth = screenWidth - padding;
-        final double cardWidth = (availableWidth - (spacing * 1.75)) / 2.75; // 确保2.75个卡片能放下
+        // 确保最小宽度，防止负宽度约束
+        const double minCardWidth = 120.0; // 最小卡片宽度
+        final double calculatedCardWidth = (availableWidth - (spacing * 1.75)) / 2.75;
+        final double cardWidth = math.max(calculatedCardWidth, minCardWidth);
+        final double cardHeight = (cardWidth * 1.5) + 50; // 缓存高度计算
         
         return Container(
-          height: (cardWidth * 1.5) + 50, // 动态计算高度：图片高度 + 文字区域高度
+          height: cardHeight, // 使用缓存的高度
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
@@ -439,42 +547,28 @@ class _ContinueWatchingSectionState extends State<ContinueWatchingSection>
 
   /// 构建闪烁效果
   Widget _buildShimmerEffect() {
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.centerLeft,
-          end: Alignment.centerRight,
-          colors: [
-            Colors.grey[300]!,
-            Colors.grey[100]!,
-            Colors.grey[300]!,
-          ],
-          stops: const [0.0, 0.5, 1.0],
-        ),
-      ),
-      child: AnimatedBuilder(
-        animation: _shimmerAnimation,
-        builder: (context, child) {
-          return Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.centerLeft,
-                end: Alignment.centerRight,
-                colors: [
-                  Colors.grey[300]!,
-                  Colors.grey[100]!,
-                  Colors.grey[300]!,
-                ],
-                stops: [
-                  0.0,
-                  _shimmerAnimation.value,
-                  1.0,
-                ],
-              ),
+    return AnimatedBuilder(
+      animation: _shimmerAnimation,
+      builder: (context, child) {
+        return Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.centerLeft,
+              end: Alignment.centerRight,
+              colors: [
+                Colors.grey[300]!,
+                Colors.grey[100]!,
+                Colors.grey[300]!,
+              ],
+              stops: [
+                0.0,
+                _shimmerAnimation.value,
+                1.0,
+              ],
             ),
-          );
-        },
-      ),
+          ),
+        );
+      },
     );
   }
 
