@@ -1,23 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../models/play_record.dart';
+import '../models/video_info.dart';
 
 /// 视频卡片组件
 class VideoCard extends StatelessWidget {
-  final PlayRecord playRecord;
+  final VideoInfo videoInfo;
   final VoidCallback? onTap;
   final String from; // 场景值：'favorite', 'playrecord'
-  final String? source; // 来源标识
-  final String? id; // 唯一标识
   final double? cardWidth; // 卡片宽度，用于响应式布局
 
   const VideoCard({
     super.key,
-    required this.playRecord,
+    required this.videoInfo,
     this.onTap,
     this.from = 'playrecord',
-    this.source,
-    this.id,
     this.cardWidth,
   });
 
@@ -55,7 +51,7 @@ class VideoCard extends StatelessWidget {
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(8),
                     child: Image.network(
-                      playRecord.cover,
+                      _getImageUrl(videoInfo.cover, videoInfo.source),
                       fit: BoxFit.cover,
                       errorBuilder: (context, error, stackTrace) {
                         return Container(
@@ -70,22 +66,42 @@ class VideoCard extends StatelessWidget {
                       loadingBuilder: (context, child, loadingProgress) {
                         if (loadingProgress == null) return child;
                         return Container(
-                          color: Colors.grey[300],
-                          child: const Center(
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation<Color>(
-                                Color(0xFF2c3e50),
-                              ),
-                            ),
+                          width: width,
+                          height: height,
+                          decoration: BoxDecoration(
+                            color: Colors.grey[300],
+                            borderRadius: BorderRadius.circular(8),
                           ),
                         );
                       },
                     ),
                   ),
                 ),
-                // 集数指示器
-                if (_shouldShowEpisodeInfo())
+                // 集数指示器或评分指示器
+                if ((from == 'douban' || from == 'bangumi') && videoInfo.rate != null && videoInfo.rate!.isNotEmpty)
+                  Positioned(
+                    top: 8,
+                    right: 8,
+                    child: Container(
+                      width: 32,
+                      height: 32,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFe91e63), // 粉色圆形背景
+                        shape: BoxShape.circle,
+                      ),
+                      child: Center(
+                        child: Text(
+                          videoInfo.rate!,
+                          style: GoogleFonts.poppins(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                  )
+                else if (_shouldShowEpisodeInfo())
                   Positioned(
                     top: 8,
                     right: 8,
@@ -122,7 +138,7 @@ class VideoCard extends StatelessWidget {
                       ),
                       child: FractionallySizedBox(
                         alignment: Alignment.centerLeft,
-                        widthFactor: playRecord.progressPercentage,
+                        widthFactor: videoInfo.progressPercentage,
                         child: Container(
                           decoration: const BoxDecoration(
                             color: Color(0xFF27ae60),
@@ -141,9 +157,9 @@ class VideoCard extends StatelessWidget {
             // 标题
             Center(
               child: Text(
-                playRecord.title,
+                videoInfo.title,
                 style: GoogleFonts.poppins(
-                  fontSize: width < 100 ? 10 : 11, // 根据宽度调整字体大小
+                  fontSize: width < 100 ? 12 : 13, // 根据宽度调整字体大小，调大字体
                   fontWeight: FontWeight.w500,
                   color: const Color(0xFF2c3e50),
                 ),
@@ -152,34 +168,37 @@ class VideoCard extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
               ),
             ),
-            const SizedBox(height: 3), // 增加title和sourceName之间的间距
-            // 视频源名称
-            Center(
-              child: Container(
-                padding: EdgeInsets.symmetric(
-                  horizontal: width < 100 ? 2 : 4, 
-                  vertical: 0.5, // 进一步减少垂直padding
-                ),
-                decoration: BoxDecoration(
-                  border: Border.all(
-                    color: const Color(0xFF7f8c8d),
-                    width: 0.8,
+            // 豆瓣模式和Bangumi模式不显示来源信息
+            if (from != 'douban' && from != 'bangumi') ...[
+              const SizedBox(height: 3), // 增加title和sourceName之间的间距
+              // 视频源名称
+              Center(
+                child: Container(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: width < 100 ? 2 : 4, 
+                    vertical: 2.0, // 增加垂直padding，让border不紧贴文字
                   ),
-                  borderRadius: BorderRadius.circular(3),
-                ),
-                child: Text(
-                  playRecord.sourceName,
-                  style: GoogleFonts.poppins(
-                    fontSize: width < 100 ? 9 : 10, // 根据宽度调整字体大小
-                    color: const Color(0xFF7f8c8d),
-                    height: 1.0, // 进一步减少行高
+                  decoration: BoxDecoration(
+                    border: Border.all(
+                      color: const Color(0xFF7f8c8d),
+                      width: 0.8,
+                    ),
+                    borderRadius: BorderRadius.circular(3),
                   ),
-                  textAlign: TextAlign.center,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                  child: Text(
+                    videoInfo.sourceName,
+                    style: GoogleFonts.poppins(
+                      fontSize: width < 100 ? 11 : 12, // 根据宽度调整字体大小，调大字体
+                      color: const Color(0xFF7f8c8d),
+                      height: 1.0, // 进一步减少行高
+                    ),
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
               ),
-            ),
+            ],
           ],
         ),
       ),
@@ -188,8 +207,13 @@ class VideoCard extends StatelessWidget {
 
   /// 根据场景判断是否显示集数信息
   bool _shouldShowEpisodeInfo() {
+    // 豆瓣模式和Bangumi模式不显示集数信息
+    if (from == 'douban' || from == 'bangumi') {
+      return false;
+    }
+    
     // 总集数为1时永远不显示集数指示器
-    if (playRecord.totalEpisodes <= 1) {
+    if (videoInfo.totalEpisodes <= 1) {
       return false;
     }
     
@@ -206,10 +230,10 @@ class VideoCard extends StatelessWidget {
   String _getEpisodeText() {
     switch (from) {
       case 'favorite':
-        return '${playRecord.totalEpisodes}'; // 收藏夹只显示总集数
+        return '${videoInfo.totalEpisodes}'; // 收藏夹只显示总集数
       case 'playrecord':
       default:
-        return '${playRecord.index}/${playRecord.totalEpisodes}'; // 播放记录显示当前/总集数
+        return '${videoInfo.index}/${videoInfo.totalEpisodes}'; // 播放记录显示当前/总集数
     }
   }
 
@@ -218,9 +242,25 @@ class VideoCard extends StatelessWidget {
     switch (from) {
       case 'favorite':
         return false; // 收藏夹中不显示进度条
+      case 'douban':
+        return false; // 豆瓣模式不显示进度条
+      case 'bangumi':
+        return false; // Bangumi模式不显示进度条
       case 'playrecord':
       default:
         return true; // 播放记录中显示进度条
     }
+  }
+
+  /// 获取处理后的图片URL
+  String _getImageUrl(String originalUrl, String? source) {
+    if (source == 'douban' && originalUrl.isNotEmpty) {
+      // 将豆瓣图片域名替换为新的域名
+      return originalUrl.replaceAll(
+        RegExp(r'https?://[^/]+\.doubanio\.com'),
+        'https://img.doubanio.cmliussss.net'
+      );
+    }
+    return originalUrl;
   }
 }

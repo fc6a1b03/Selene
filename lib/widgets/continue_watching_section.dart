@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../models/play_record.dart';
+import '../models/video_info.dart';
 import '../services/api_service.dart';
 import 'video_card.dart';
 
@@ -73,7 +74,6 @@ class _ContinueWatchingSectionState extends State<ContinueWatchingSection>
             records.add(PlayRecord.fromJson(id, data));
           } catch (e) {
             // 忽略解析失败的记录
-            print('解析播放记录失败: $e');
           }
         });
 
@@ -96,6 +96,111 @@ class _ContinueWatchingSectionState extends State<ContinueWatchingSection>
         _isLoading = false;
       });
     }
+  }
+
+  /// 显示清空确认弹窗
+  void _showClearConfirmation() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          contentPadding: const EdgeInsets.all(24),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // 图标
+              Container(
+                width: 64,
+                height: 64,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFe74c3c).withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.delete_outline,
+                  color: Color(0xFFe74c3c),
+                  size: 32,
+                ),
+              ),
+              const SizedBox(height: 20),
+              // 标题
+              Text(
+                '清空播放记录',
+                style: GoogleFonts.poppins(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: const Color(0xFF2c3e50),
+                ),
+              ),
+              const SizedBox(height: 12),
+              // 描述
+              Text(
+                '确定要清空所有播放记录吗？此操作无法撤销。',
+                style: GoogleFonts.poppins(
+                  fontSize: 14,
+                  color: const Color(0xFF7f8c8d),
+                  height: 1.4,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              // 按钮
+              Row(
+                children: [
+                  Expanded(
+                    child: TextButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      child: Text(
+                        '取消',
+                        style: GoogleFonts.poppins(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          color: const Color(0xFF7f8c8d),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                        _clearPlayRecords();
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFe74c3c),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        elevation: 0,
+                      ),
+                      child: Text(
+                        '清空',
+                        style: GoogleFonts.poppins(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   /// 清空播放记录
@@ -195,7 +300,7 @@ class _ContinueWatchingSectionState extends State<ContinueWatchingSection>
                 ),
                 if (_playRecords.isNotEmpty)
                   TextButton(
-                    onPressed: _clearPlayRecords,
+                    onPressed: _showClearConfirmation,
                     style: TextButton.styleFrom(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       minimumSize: Size.zero,
@@ -221,15 +326,15 @@ class _ContinueWatchingSectionState extends State<ContinueWatchingSection>
           else
             LayoutBuilder(
               builder: (context, constraints) {
-                // 计算卡片宽度，确保能显示至少3个卡片
+                // 计算卡片宽度，确保能显示2.75个卡片
                 final double screenWidth = constraints.maxWidth;
                 final double padding = 32.0; // 左右padding (16 * 2)
                 final double spacing = 12.0; // 卡片间距
                 final double availableWidth = screenWidth - padding;
-                final double cardWidth = (availableWidth - (spacing * 2)) / 3; // 确保3个卡片能放下
+                final double cardWidth = (availableWidth - (spacing * 1.75)) / 2.75; // 确保2.75个卡片能放下
                 
                 return SizedBox(
-                  height: 240,
+                  height: (cardWidth * 1.5) + 50, // 动态计算高度：图片高度 + 文字区域高度
                   child: ListView.builder(
                     scrollDirection: Axis.horizontal,
                     padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -241,11 +346,9 @@ class _ContinueWatchingSectionState extends State<ContinueWatchingSection>
                           right: index < _playRecords.length - 1 ? spacing : 0,
                         ),
                         child: VideoCard(
-                          playRecord: playRecord,
+                          videoInfo: VideoInfo.fromPlayRecord(playRecord),
                           onTap: () => widget.onVideoTap?.call(playRecord),
                           from: 'playrecord',
-                          source: playRecord.source,
-                          id: playRecord.id,
                           cardWidth: cardWidth, // 使用动态计算的宽度
                         ),
                       );
@@ -263,19 +366,19 @@ class _ContinueWatchingSectionState extends State<ContinueWatchingSection>
   Widget _buildLoadingState() {
     return LayoutBuilder(
       builder: (context, constraints) {
-        // 计算卡片宽度，确保能显示至少3个卡片
+        // 计算卡片宽度，确保能显示2.75个卡片
         final double screenWidth = constraints.maxWidth;
         final double padding = 32.0; // 左右padding (16 * 2)
         final double spacing = 12.0; // 卡片间距
         final double availableWidth = screenWidth - padding;
-        final double cardWidth = (availableWidth - (spacing * 2)) / 3; // 确保3个卡片能放下
+        final double cardWidth = (availableWidth - (spacing * 1.75)) / 2.75; // 确保2.75个卡片能放下
         
         return Container(
-          height: 240,
+          height: (cardWidth * 1.5) + 50, // 动态计算高度：图片高度 + 文字区域高度
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
-            itemCount: 3, // 显示3个骨架卡片
+            itemCount: 3, // 显示3个骨架卡片，最后一个只显示一半
             itemBuilder: (context, index) {
               return Container(
                 width: cardWidth,

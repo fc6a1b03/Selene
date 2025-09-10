@@ -110,3 +110,4 @@ class FavoritesSection extends StatelessWidget {
     );
   }
 }
+

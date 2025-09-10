@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../widgets/continue_watching_section.dart';
+import '../widgets/hot_movies_section.dart';
+import '../widgets/hot_tv_section.dart';
+import '../widgets/hot_show_section.dart';
+import '../widgets/bangumi_section.dart';
 import '../widgets/main_layout.dart';
 import '../widgets/top_tab_switcher.dart';
 import '../widgets/favorites_grid.dart';
@@ -74,10 +78,21 @@ class _HomeScreenState extends State<HomeScreen> {
                     ContinueWatchingSection(
                       onVideoTap: _onVideoTap,
                     ),
-                    // 其他内容区域
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      child: const SizedBox.shrink(), // 暂时隐藏，后续可以添加其他内容
+                    // 热门电影组件
+                    HotMoviesSection(
+                      onMovieTap: _onVideoTap,
+                    ),
+                    // 热门剧集组件
+                    HotTvSection(
+                      onTvTap: _onVideoTap,
+                    ),
+                    // 新番放送组件
+                    BangumiSection(
+                      onBangumiTap: _onVideoTap,
+                    ),
+                    // 热门综艺组件
+                    HotShowSection(
+                      onShowTap: _onVideoTap,
                     ),
                   ],
                 )

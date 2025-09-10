@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../models/favorite_item.dart';
 import '../widgets/video_card.dart';
 import '../models/play_record.dart';
+import '../models/video_info.dart';
 import '../services/api_service.dart';
 
 class FavoritesGrid extends StatefulWidget {
@@ -110,7 +111,6 @@ class _FavoritesGridState extends State<FavoritesGrid>
             records.add(PlayRecord.fromJson(key, data));
           } catch (e) {
             // 忽略解析失败的记录
-            print('解析播放记录失败: $e');
           }
         });
 
@@ -394,11 +394,9 @@ class _FavoritesGridState extends State<FavoritesGrid>
               );
               
               return VideoCard(
-                playRecord: playRecord,
+                videoInfo: VideoInfo.fromPlayRecord(playRecord),
                 onTap: () => widget.onVideoTap(playRecord),
                 from: hasPlayRecord ? 'playrecord' : 'favorite',
-                source: favorite.source,
-                id: favorite.id,
                 cardWidth: itemWidth, // 传递计算出的宽度
               );
             },
