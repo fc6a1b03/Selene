@@ -19,12 +19,38 @@ class DoubanMovie {
 
   /// 从JSON创建DoubanMovie实例
   factory DoubanMovie.fromJson(Map<String, dynamic> json) {
+    // 处理poster字段，优先使用normal，其次large
+    String poster = '';
+    if (json['pic'] != null) {
+      final pic = json['pic'] as Map<String, dynamic>?;
+      poster = pic?['normal']?.toString() ?? 
+               pic?['large']?.toString() ?? '';
+    }
+    
+    // 处理rating字段
+    String? rate;
+    if (json['rating'] != null) {
+      final rating = json['rating'] as Map<String, dynamic>?;
+      final value = rating?['value'];
+      if (value != null) {
+        rate = (value as num).toStringAsFixed(1);
+      }
+    }
+    
+    // 处理年份，从card_subtitle中提取
+    String year = '';
+    if (json['card_subtitle'] != null) {
+      final cardSubtitle = json['card_subtitle']?.toString() ?? '';
+      final yearMatch = RegExp(r'(\d{4})').firstMatch(cardSubtitle);
+      year = yearMatch?.group(1) ?? '';
+    }
+    
     return DoubanMovie(
       id: json['id']?.toString() ?? '',
       title: json['title']?.toString() ?? '',
-      poster: json['poster']?.toString() ?? '',
-      rate: json['rate']?.toString(),
-      year: json['year']?.toString() ?? '',
+      poster: poster,
+      rate: rate,
+      year: year,
     );
   }
 
@@ -80,27 +106,18 @@ class DoubanMovie {
 
 /// 豆瓣API响应模型
 class DoubanResponse {
-  final int code;
-  final String message;
-  final List<DoubanMovie> list;
+  final List<DoubanMovie> items;
 
   const DoubanResponse({
-    required this.code,
-    required this.message,
-    required this.list,
+    required this.items,
   });
 
   /// 从JSON创建DoubanResponse实例
   factory DoubanResponse.fromJson(Map<String, dynamic> json) {
-    // 直接使用根级别数据，结构为: {code, message, list}
-    final code = json['code'] ?? 0;
-    final message = json['message']?.toString() ?? '';
-    final listData = json['list'] as List<dynamic>? ?? [];
+    final itemsData = json['items'] as List<dynamic>? ?? [];
     
     return DoubanResponse(
-      code: code,
-      message: message,
-      list: listData.map((item) {
+      items: itemsData.map((item) {
         return DoubanMovie.fromJson(item as Map<String, dynamic>);
       }).toList(),
     );

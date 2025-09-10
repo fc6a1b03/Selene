@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
 import '../models/video_info.dart';
+import '../services/theme_service.dart';
 
 /// 视频卡片组件
 class VideoCard extends StatelessWidget {
@@ -19,17 +21,19 @@ class VideoCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // 使用传入的宽度或默认宽度
-    final double width = cardWidth ?? 120.0;
-    final double height = width * 1.5; // 2:3 比例
-    
-    // 缓存计算结果
-    final bool shouldShowEpisodeInfo = _shouldShowEpisodeInfo();
-    final bool shouldShowProgress = _shouldShowProgress();
-    final String episodeText = shouldShowEpisodeInfo ? _getEpisodeText() : '';
-    final String imageUrl = _getImageUrl(videoInfo.cover, videoInfo.source);
-    
-    return GestureDetector(
+    return Consumer<ThemeService>(
+      builder: (context, themeService, child) {
+        // 使用传入的宽度或默认宽度
+        final double width = cardWidth ?? 120.0;
+        final double height = width * 1.5; // 2:3 比例
+        
+        // 缓存计算结果
+        final bool shouldShowEpisodeInfo = _shouldShowEpisodeInfo();
+        final bool shouldShowProgress = _shouldShowProgress();
+        final String episodeText = shouldShowEpisodeInfo ? _getEpisodeText() : '';
+        final String imageUrl = _getImageUrl(videoInfo.cover, videoInfo.source);
+        
+        return GestureDetector(
       onTap: onTap,
       child: Container(
         width: width,
@@ -65,18 +69,35 @@ class VideoCard extends StatelessWidget {
                       // 优化加载性能
                       frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
                         if (wasSynchronouslyLoaded) return child;
+                        if (frame == null) {
+                          // 图片未加载完成时显示占位符
+                          return Container(
+                            width: width,
+                            height: height,
+                            decoration: BoxDecoration(
+                              color: themeService.isDarkMode 
+                                  ? const Color(0xFF333333)
+                                  : Colors.grey[300],
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          );
+                        }
                         return AnimatedOpacity(
-                          opacity: frame == null ? 0 : 1,
+                          opacity: 1,
                           duration: const Duration(milliseconds: 200),
                           child: child,
                         );
                       },
                       errorBuilder: (context, error, stackTrace) {
                         return Container(
-                          color: Colors.grey[300],
-                          child: const Icon(
+                          color: themeService.isDarkMode 
+                              ? const Color(0xFF333333)
+                              : Colors.grey[300],
+                          child: Icon(
                             Icons.movie,
-                            color: Colors.grey,
+                            color: themeService.isDarkMode 
+                                ? const Color(0xFF666666)
+                                : Colors.grey,
                             size: 40,
                           ),
                         );
@@ -87,7 +108,9 @@ class VideoCard extends StatelessWidget {
                           width: width,
                           height: height,
                           decoration: BoxDecoration(
-                            color: Colors.grey[300],
+                            color: themeService.isDarkMode 
+                                ? const Color(0xFF333333)
+                                : Colors.grey[300],
                             borderRadius: BorderRadius.circular(8),
                           ),
                         );
@@ -179,7 +202,9 @@ class VideoCard extends StatelessWidget {
                 style: GoogleFonts.poppins(
                   fontSize: width < 100 ? 12 : 13, // 根据宽度调整字体大小，调大字体
                   fontWeight: FontWeight.w500,
-                  color: const Color(0xFF2c3e50),
+                  color: themeService.isDarkMode 
+                      ? const Color(0xFFffffff)
+                      : const Color(0xFF2c3e50),
                 ),
                 textAlign: TextAlign.center,
                 maxLines: 2,
@@ -220,6 +245,8 @@ class VideoCard extends StatelessWidget {
           ],
         ),
       ),
+    );
+      },
     );
   }
 

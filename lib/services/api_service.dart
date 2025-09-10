@@ -355,6 +355,39 @@ class ApiService {
     }
   }
 
+  /// 获取搜索历史
+  static Future<ApiResponse<List<String>>> getSearchHistory(BuildContext context) async {
+    try {
+      final response = await get<List<String>>(
+        '/api/searchhistory',
+        context: context,
+        fromJson: (data) => (data as List).cast<String>(),
+      );
+      
+      if (response.success && response.data != null) {
+        return ApiResponse.success(response.data!, statusCode: response.statusCode);
+      } else {
+        return ApiResponse.error(response.message ?? '获取搜索历史失败');
+      }
+    } catch (e) {
+      return ApiResponse.error('获取搜索历史异常: ${e.toString()}');
+    }
+  }
+
+  /// 清空搜索历史
+  static Future<ApiResponse<void>> clearSearchHistory(BuildContext context) async {
+    try {
+      final response = await delete<void>(
+        '/api/searchhistory',
+        context: context,
+      );
+      
+      return response;
+    } catch (e) {
+      return ApiResponse.error('清空搜索历史异常: ${e.toString()}');
+    }
+  }
+
   /// 检查网络连接状态
   static Future<bool> checkConnection() async {
     try {
@@ -370,5 +403,77 @@ class ApiService {
     } catch (e) {
       return false;
     }
+  }
+
+  /// 自动登录方法
+  static Future<ApiResponse<String>> autoLogin() async {
+    try {
+      // 获取用户数据
+      final serverUrl = await UserDataService.getServerUrl();
+      final username = await UserDataService.getUsername();
+      final password = await UserDataService.getPassword();
+      
+      if (serverUrl == null || username == null || password == null) {
+        return ApiResponse.error('缺少登录信息');
+      }
+      
+      // 处理 URL
+      String baseUrl = serverUrl.trim();
+      if (baseUrl.endsWith('/')) {
+        baseUrl = baseUrl.substring(0, baseUrl.length - 1);
+      }
+      String loginUrl = '$baseUrl/api/login';
+      
+      // 发送登录请求
+      final response = await http.post(
+        Uri.parse(loginUrl),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: json.encode({
+          'username': username,
+          'password': password,
+        }),
+      ).timeout(_timeout);
+      
+      if (response.statusCode == 200) {
+        // 解析并保存 cookies
+        String cookies = _parseCookies(response);
+        
+        // 更新 cookies
+        await UserDataService.saveUserData(
+          serverUrl: baseUrl,
+          username: username,
+          password: password,
+          cookies: cookies,
+        );
+        
+        return ApiResponse.success('自动登录成功', statusCode: response.statusCode);
+      } else {
+        return ApiResponse.error(
+          '自动登录失败: ${response.statusCode}',
+          statusCode: response.statusCode,
+        );
+      }
+    } catch (e) {
+      return ApiResponse.error('自动登录异常: ${e.toString()}');
+    }
+  }
+
+  /// 解析 Set-Cookie 头部
+  static String _parseCookies(http.Response response) {
+    List<String> cookies = [];
+    
+    // 获取所有 Set-Cookie 头部
+    final setCookieHeaders = response.headers['set-cookie'];
+    if (setCookieHeaders != null) {
+      // HTTP 头部通常是 String 类型
+      final cookieParts = setCookieHeaders.split(';');
+      if (cookieParts.isNotEmpty) {
+        cookies.add(cookieParts[0].trim());
+      }
+    }
+    
+    return cookies.join('; ');
   }
 }

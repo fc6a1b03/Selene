@@ -1,8 +1,10 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
 import '../models/play_record.dart';
 import '../models/video_info.dart';
+import '../services/theme_service.dart';
 import 'video_card.dart';
 
 /// 推荐信息模块组件
@@ -57,13 +59,19 @@ class RecommendationSection extends StatelessWidget {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  title,
-                  style: GoogleFonts.poppins(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                    color: const Color(0xFF2c3e50),
-                  ),
+                Consumer<ThemeService>(
+                  builder: (context, themeService, child) {
+                    return Text(
+                      title,
+                      style: GoogleFonts.poppins(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                        color: themeService.isDarkMode 
+                            ? const Color(0xFFffffff)
+                            : const Color(0xFF2c3e50),
+                      ),
+                    );
+                  },
                 ),
                 if (moreText != null && onMoreTap != null)
                   TextButton(
@@ -197,41 +205,41 @@ class RecommendationSection extends StatelessWidget {
 
   /// 构建骨架卡片
   Widget _buildSkeletonCard(double width) {
-    final double height = width * 1.5;
-    
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // 封面骨架
-        Container(
-          width: width,
-          height: height,
-          decoration: BoxDecoration(
-            color: Colors.grey[300],
-            borderRadius: BorderRadius.circular(8),
-          ),
-        ),
-        const SizedBox(height: 6),
-        // 标题骨架
-        Container(
-          height: 14,
-          width: width * 0.8,
-          decoration: BoxDecoration(
-            color: Colors.grey[300],
-            borderRadius: BorderRadius.circular(4),
-          ),
-        ),
-        const SizedBox(height: 4),
-        // 源名称骨架
-        Container(
-          height: 10,
-          width: width * 0.6,
-          decoration: BoxDecoration(
-            color: Colors.grey[300],
-            borderRadius: BorderRadius.circular(4),
-          ),
-        ),
-      ],
+    return Consumer<ThemeService>(
+      builder: (context, themeService, child) {
+        final double height = width * 1.5;
+        
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            // 封面骨架
+            Container(
+              width: width,
+              height: height,
+              decoration: BoxDecoration(
+                color: themeService.isDarkMode 
+                    ? const Color(0xFF333333)
+                    : Colors.grey[300],
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            const SizedBox(height: 6),
+            // 标题骨架
+            Center(
+              child: Container(
+                height: 14,
+                width: width * 0.8,
+                decoration: BoxDecoration(
+                  color: themeService.isDarkMode 
+                      ? const Color(0xFF333333)
+                      : Colors.grey[300],
+                  borderRadius: BorderRadius.circular(4),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 

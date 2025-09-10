@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:provider/provider.dart';
 import '../services/theme_service.dart';
 
 class MainLayout extends StatelessWidget {
@@ -9,6 +10,8 @@ class MainLayout extends StatelessWidget {
   final Function(int) onBottomNavChanged;
   final String selectedTopTab;
   final Function(String) onTopTabChanged;
+  final bool isSearchMode;
+  final Function(bool)? onSearchModeChanged;
 
   const MainLayout({
     super.key,
@@ -17,32 +20,37 @@ class MainLayout extends StatelessWidget {
     required this.onBottomNavChanged,
     required this.selectedTopTab,
     required this.onTopTabChanged,
+    this.isSearchMode = false,
+    this.onSearchModeChanged,
   });
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: ThemeService(),
-      builder: (context, child) {
-        final themeService = ThemeService();
+    return Consumer<ThemeService>(
+      builder: (context, themeService, child) {
         return Theme(
           data: themeService.isDarkMode ? themeService.darkTheme : themeService.lightTheme,
           child: Scaffold(
             body: Container(
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Color(0xFFe6f3fb), // #e6f3fb 0%
-                    Color(0xFFeaf3f7), // #eaf3f7 18%
-                    Color(0xFFf7f7f3), // #f7f7f3 38%
-                    Color(0xFFe9ecef), // #e9ecef 60%
-                    Color(0xFFdbe3ea), // #dbe3ea 80%
-                    Color(0xFFd3dde6), // #d3dde6 100%
-                  ],
-                  stops: [0.0, 0.18, 0.38, 0.60, 0.80, 1.0],
-                ),
+              decoration: BoxDecoration(
+                color: themeService.isDarkMode 
+                    ? const Color(0xFF000000) // 深色模式纯黑色
+                    : null,
+                gradient: themeService.isDarkMode 
+                    ? null
+                    : const LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Color(0xFFe6f3fb), // 浅色模式渐变
+                          Color(0xFFeaf3f7),
+                          Color(0xFFf7f7f3),
+                          Color(0xFFe9ecef),
+                          Color(0xFFdbe3ea),
+                          Color(0xFFd3dde6),
+                        ],
+                        stops: [0.0, 0.18, 0.38, 0.60, 0.80, 1.0],
+                      ),
               ),
               child: Column(
                 children: [
@@ -56,7 +64,7 @@ class MainLayout extends StatelessWidget {
               ),
             ),
             // 固定底部导航栏
-            bottomNavigationBar: _buildBottomNavBar(),
+            bottomNavigationBar: _buildBottomNavBar(themeService),
           ),
         );
       },
@@ -72,10 +80,14 @@ class MainLayout extends StatelessWidget {
         bottom: 8,
       ),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.8),
+        color: themeService.isDarkMode 
+            ? const Color(0xFF1e1e1e).withOpacity(0.9)
+            : Colors.white.withOpacity(0.8),
         border: Border(
           bottom: BorderSide(
-            color: Colors.white.withOpacity(0.2),
+            color: themeService.isDarkMode 
+                ? const Color(0xFF333333).withOpacity(0.3)
+                : Colors.white.withOpacity(0.2),
             width: 1,
           ),
         ),
@@ -98,12 +110,16 @@ class MainLayout extends StatelessWidget {
                   child: InkWell(
                     borderRadius: BorderRadius.circular(24),
                     onTap: () {
-                      // TODO: 实现搜索功能
+                      if (onSearchModeChanged != null) {
+                        onSearchModeChanged!(!isSearchMode);
+                      }
                     },
                     child: Center(
                       child: Icon(
                         LucideIcons.search,
-                        color: const Color(0xFF2c3e50),
+                        color: themeService.isDarkMode 
+                            ? const Color(0xFFffffff)
+                            : const Color(0xFF2c3e50),
                         size: 24,
                         weight: 1.0,
                       ),
@@ -120,7 +136,9 @@ class MainLayout extends StatelessWidget {
               style: GoogleFonts.poppins(
                 fontSize: 24,
                 fontWeight: FontWeight.w300,
-                color: const Color(0xFF2c3e50),
+                color: themeService.isDarkMode 
+                    ? const Color(0xFFffffff)
+                    : const Color(0xFF2c3e50),
                 letterSpacing: 1.5,
               ),
             ),
@@ -148,11 +166,23 @@ class MainLayout extends StatelessWidget {
                           themeService.toggleTheme();
                         },
                         child: Center(
-                          child: Icon(
-                            LucideIcons.moon,
-                            color: const Color(0xFF2c3e50),
-                            size: 24,
-                            weight: 1.0,
+                          child: AnimatedSwitcher(
+                            duration: const Duration(milliseconds: 300),
+                            transitionBuilder: (Widget child, Animation<double> animation) {
+                              return ScaleTransition(
+                                scale: animation,
+                                child: child,
+                              );
+                            },
+                            child: Icon(
+                              themeService.isDarkMode ? LucideIcons.sun : LucideIcons.moon,
+                              key: ValueKey(themeService.isDarkMode),
+                              color: themeService.isDarkMode 
+                                  ? const Color(0xFFffffff)
+                                  : const Color(0xFF2c3e50),
+                              size: 24,
+                              weight: 1.0,
+                            ),
                           ),
                         ),
                       ),
@@ -179,7 +209,9 @@ class MainLayout extends StatelessWidget {
                         child: Center(
                           child: Icon(
                             LucideIcons.user,
-                            color: const Color(0xFF2c3e50),
+                            color: themeService.isDarkMode 
+                                ? const Color(0xFFffffff)
+                                : const Color(0xFF2c3e50),
                             size: 24,
                             weight: 1.0,
                           ),
@@ -196,7 +228,7 @@ class MainLayout extends StatelessWidget {
     );
   }
 
-  Widget _buildBottomNavBar() {
+  Widget _buildBottomNavBar(ThemeService themeService) {
     final List<Map<String, dynamic>> navItems = [
       {'icon': LucideIcons.house, 'label': '首页'},
       {'icon': LucideIcons.video, 'label': '电影'},
@@ -207,10 +239,14 @@ class MainLayout extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.9),
+        color: themeService.isDarkMode 
+            ? const Color(0xFF1e1e1e).withOpacity(0.9)
+            : Colors.white.withOpacity(0.9),
         border: Border(
           top: BorderSide(
-            color: Colors.white.withOpacity(0.2),
+            color: themeService.isDarkMode 
+                ? const Color(0xFF333333).withOpacity(0.3)
+                : Colors.white.withOpacity(0.2),
             width: 1,
           ),
         ),
@@ -223,12 +259,13 @@ class MainLayout extends StatelessWidget {
             children: navItems.asMap().entries.map((entry) {
               int index = entry.key;
               Map<String, dynamic> item = entry.value;
-              bool isSelected = currentBottomNavIndex == index;
+              bool isSelected = !isSearchMode && currentBottomNavIndex == index;
               
               return GestureDetector(
                 onTap: () {
                   onBottomNavChanged(index);
                 },
+                behavior: HitTestBehavior.opaque, // 确保整个区域都可以点击
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   child: Column(
@@ -238,7 +275,9 @@ class MainLayout extends StatelessWidget {
                         item['icon'],
                         color: isSelected 
                             ? const Color(0xFF27ae60) 
-                            : const Color(0xFF7f8c8d),
+                            : themeService.isDarkMode 
+                                ? const Color(0xFFb0b0b0)
+                                : const Color(0xFF7f8c8d),
                         size: 24,
                       ),
                       const SizedBox(height: 4),
@@ -249,7 +288,9 @@ class MainLayout extends StatelessWidget {
                           fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
                           color: isSelected 
                               ? const Color(0xFF27ae60) 
-                              : const Color(0xFF7f8c8d),
+                              : themeService.isDarkMode 
+                                  ? const Color(0xFFb0b0b0)
+                                  : const Color(0xFF7f8c8d),
                         ),
                       ),
                     ],

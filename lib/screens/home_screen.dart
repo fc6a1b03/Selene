@@ -8,6 +8,7 @@ import '../widgets/bangumi_section.dart';
 import '../widgets/main_layout.dart';
 import '../widgets/top_tab_switcher.dart';
 import '../widgets/favorites_grid.dart';
+import '../widgets/search_content.dart';
 import '../models/play_record.dart';
 import 'movies_screen.dart';
 import 'series_screen.dart';
@@ -24,6 +25,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int _currentBottomNavIndex = 0;
   String _selectedTopTab = '首页';
+  bool _isSearchMode = false;
 
   // 预加载所有页面，使用IndexedStack保持状态
   late final List<Widget> _pages;
@@ -58,7 +60,7 @@ class _HomeScreenState extends State<HomeScreen> {
           tab == '首页'
               ? Column(
                   children: [
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 8),
                     // 继续观看组件
                     ContinueWatchingSection(
                       onVideoTap: _onVideoTap,
@@ -87,7 +89,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 )
               : Column(
                   children: [
-                    const SizedBox(height: 8), // 收藏夹内容更靠近切换按钮
+                    const SizedBox(height: 4), // 收藏夹内容更靠近切换按钮
                     FavoritesGrid(
                       onVideoTap: _onVideoTap,
                     ),
@@ -101,16 +103,20 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return MainLayout(
-      content: _currentBottomNavIndex == 0 
-          ? _buildHomeContentForTab(_selectedTopTab)
-          : IndexedStack(
-              index: _currentBottomNavIndex,
-              children: _pages,
-            ),
+      content: _isSearchMode
+          ? _buildSearchContent()
+          : _currentBottomNavIndex == 0 
+              ? _buildHomeContentForTab(_selectedTopTab)
+              : IndexedStack(
+                  index: _currentBottomNavIndex,
+                  children: _pages,
+                ),
       currentBottomNavIndex: _currentBottomNavIndex,
       onBottomNavChanged: _onBottomNavChanged,
       selectedTopTab: _selectedTopTab,
       onTopTabChanged: _onTopTabChanged,
+      isSearchMode: _isSearchMode,
+      onSearchModeChanged: _onSearchModeChanged,
     );
   }
 
@@ -118,15 +124,36 @@ class _HomeScreenState extends State<HomeScreen> {
 
   /// 处理底部导航栏切换
   void _onBottomNavChanged(int index) {
+    // 防止重复点击同一个标签
+    if (_currentBottomNavIndex == index && !_isSearchMode) {
+      return;
+    }
+    
     setState(() {
+      // 如果在搜索模式下，先退出搜索模式
+      if (_isSearchMode) {
+        _isSearchMode = false;
+      }
       _currentBottomNavIndex = index;
     });
   }
 
   /// 处理顶部标签切换
   void _onTopTabChanged(String tab) {
+    // 防止重复点击同一个标签
+    if (_selectedTopTab == tab) {
+      return;
+    }
+    
     setState(() {
       _selectedTopTab = tab;
+    });
+  }
+
+  /// 处理搜索模式切换
+  void _onSearchModeChanged(bool isSearchMode) {
+    setState(() {
+      _isSearchMode = isSearchMode;
     });
   }
 
@@ -148,6 +175,11 @@ class _HomeScreenState extends State<HomeScreen> {
         margin: const EdgeInsets.all(16),
       ),
     );
+  }
+
+  /// 构建搜索内容
+  Widget _buildSearchContent() {
+    return const SearchContent();
   }
 
 }

@@ -6,6 +6,7 @@ import '../models/play_record.dart';
 import '../models/bangumi.dart';
 import '../models/favorite_item.dart';
 import 'api_service.dart';
+import 'douban_service.dart';
 
 /// 页面缓存服务 - 单例模式
 class PageCacheService {
@@ -192,19 +193,12 @@ class PageCacheService {
 
     // 缓存未命中，从API获取
     try {
-      const apiUrl = '/api/douban/categories?category=热门&kind=movie&pageLimit=20&pageStart=0&type=全部';
-
-      final response = await ApiService.get<Map<String, dynamic>>(
-        apiUrl,
-        context: context,
-      );
+      final response = await DoubanService.getHotMovies(context);
 
       if (response.success && response.data != null) {
-        final doubanResponse = DoubanResponse.fromJson(response.data!);
-        
         // 缓存数据
-        setCache(cacheKey, doubanResponse.list);
-        return doubanResponse.list;
+        setCache(cacheKey, response.data!);
+        return response.data!;
       }
     } catch (e) {
       // 错误处理
@@ -225,19 +219,12 @@ class PageCacheService {
 
     // 缓存未命中，从API获取
     try {
-      const apiUrl = '/api/douban/categories?category=tv&kind=tv&pageLimit=20&pageStart=0&type=tv';
-
-      final response = await ApiService.get<Map<String, dynamic>>(
-        apiUrl,
-        context: context,
-      );
+      final response = await DoubanService.getHotTvShows(context);
 
       if (response.success && response.data != null) {
-        final doubanResponse = DoubanResponse.fromJson(response.data!);
-        
         // 缓存数据
-        setCache(cacheKey, doubanResponse.list);
-        return doubanResponse.list;
+        setCache(cacheKey, response.data!);
+        return response.data!;
       }
     } catch (e) {
       // 错误处理
@@ -314,19 +301,57 @@ class PageCacheService {
 
     // 缓存未命中，从API获取
     try {
-      const apiUrl = '/api/douban/categories?category=show&kind=tv&pageLimit=20&pageStart=0&type=show';
-      
-      final response = await ApiService.get<Map<String, dynamic>>(
-        apiUrl,
-        context: context,
-      );
+      final response = await DoubanService.getHotShows(context);
 
       if (response.success && response.data != null) {
-        final doubanResponse = DoubanResponse.fromJson(response.data!);
-        
         // 缓存数据
-        setCache(cacheKey, doubanResponse.list);
-        return doubanResponse.list;
+        setCache(cacheKey, response.data!);
+        return response.data!;
+      }
+    } catch (e) {
+      // 错误处理
+    }
+    
+    return null;
+  }
+
+  /// 获取搜索历史
+  Future<List<String>?> getSearchHistory(BuildContext context) async {
+    const cacheKey = 'search_history';
+    
+    // 先检查缓存
+    final cachedData = getCache<List<String>>(cacheKey);
+    if (cachedData != null) {
+      return cachedData;
+    }
+
+    // 缓存未命中，从API获取
+    try {
+      final response = await ApiService.getSearchHistory(context);
+
+      if (response.success && response.data != null) {
+        // 缓存数据
+        setCache(cacheKey, response.data!);
+        return response.data!;
+      }
+    } catch (e) {
+      // 错误处理
+    }
+    
+    return null;
+  }
+
+  /// 刷新搜索历史（强制从API获取最新数据）
+  Future<List<String>?> refreshSearchHistory(BuildContext context) async {
+    const cacheKey = 'search_history';
+    
+    try {
+      final response = await ApiService.getSearchHistory(context);
+
+      if (response.success && response.data != null) {
+        // 更新缓存数据
+        setCache(cacheKey, response.data!);
+        return response.data!;
       }
     } catch (e) {
       // 错误处理

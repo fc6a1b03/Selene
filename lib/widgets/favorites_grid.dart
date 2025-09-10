@@ -1,11 +1,13 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
 import '../models/favorite_item.dart';
 import '../widgets/video_card.dart';
 import '../models/play_record.dart';
 import '../models/video_info.dart';
 import '../services/page_cache_service.dart';
+import '../services/theme_service.dart';
 
 class FavoritesGrid extends StatefulWidget {
   final Function(PlayRecord) onVideoTap;
@@ -298,7 +300,7 @@ class _FavoritesGridState extends State<FavoritesGrid>
     final double height = width * 1.4; // 保持与VideoCard相同的比例
     
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         // 封面骨架
         Container(
@@ -312,25 +314,29 @@ class _FavoritesGridState extends State<FavoritesGrid>
         ),
         const SizedBox(height: 4),
         // 标题骨架
-        Container(
-          height: 12,
-          width: width * 0.8,
-          decoration: BoxDecoration(
-            color: Colors.grey[300],
-            borderRadius: BorderRadius.circular(4),
+        Center(
+          child: Container(
+            height: 12,
+            width: width * 0.8,
+            decoration: BoxDecoration(
+              color: Colors.grey[300],
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: _buildShimmerEffect(),
           ),
-          child: _buildShimmerEffect(),
         ),
         const SizedBox(height: 2),
         // 源名称骨架
-        Container(
-          height: 8,
-          width: width * 0.6,
-          decoration: BoxDecoration(
-            color: Colors.grey[300],
-            borderRadius: BorderRadius.circular(4),
+        Center(
+          child: Container(
+            height: 8,
+            width: width * 0.6,
+            decoration: BoxDecoration(
+              color: Colors.grey[300],
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: _buildShimmerEffect(),
           ),
-          child: _buildShimmerEffect(),
         ),
       ],
     );
@@ -338,26 +344,36 @@ class _FavoritesGridState extends State<FavoritesGrid>
 
   /// 构建闪烁效果
   Widget _buildShimmerEffect() {
-    return AnimatedBuilder(
-      animation: _shimmerAnimation,
-      builder: (context, child) {
-        return Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.centerLeft,
-              end: Alignment.centerRight,
-              colors: [
-                Colors.grey[300]!,
-                Colors.grey[100]!,
-                Colors.grey[300]!,
-              ],
-              stops: [
-                0.0,
-                _shimmerAnimation.value,
-                1.0,
-              ],
-            ),
-          ),
+    return Consumer<ThemeService>(
+      builder: (context, themeService, child) {
+        return AnimatedBuilder(
+          animation: _shimmerAnimation,
+          builder: (context, child) {
+            return Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.centerLeft,
+                  end: Alignment.centerRight,
+                  colors: themeService.isDarkMode
+                      ? [
+                          const Color(0xFF333333),
+                          const Color(0xFF1a1a1a),
+                          const Color(0xFF333333),
+                        ]
+                      : [
+                          Colors.grey[300]!,
+                          Colors.grey[100]!,
+                          Colors.grey[300]!,
+                        ],
+                  stops: [
+                    0.0,
+                    _shimmerAnimation.value,
+                    1.0,
+                  ],
+                ),
+              ),
+            );
+          },
         );
       },
     );

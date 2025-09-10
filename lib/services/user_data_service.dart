@@ -69,4 +69,18 @@ class UserDataService {
       'cookies': prefs.getString(_cookiesKey),
     };
   }
+
+  // 检查是否具有自动登录所需的所有字段
+  static Future<bool> hasAutoLoginData() async {
+    final serverUrl = await getServerUrl();
+    final username = await getUsername();
+    final password = await getPassword();
+    
+    return serverUrl != null && 
+           serverUrl.isNotEmpty && 
+           username != null && 
+           username.isNotEmpty && 
+           password != null && 
+           password.isNotEmpty;
+  }
 }

@@ -1,10 +1,12 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
 import '../models/play_record.dart';
 import '../models/video_info.dart';
 import '../services/api_service.dart';
 import '../services/page_cache_service.dart';
+import '../services/theme_service.dart';
 import 'video_card.dart';
 
 /// 继续观看组件
@@ -199,11 +201,16 @@ class _ContinueWatchingSectionState extends State<ContinueWatchingSection>
     showDialog(
       context: context,
       builder: (BuildContext context) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          contentPadding: const EdgeInsets.all(24),
+        return Consumer<ThemeService>(
+          builder: (context, themeService, child) {
+            return AlertDialog(
+              backgroundColor: themeService.isDarkMode 
+                  ? const Color(0xFF1e1e1e)
+                  : Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              contentPadding: const EdgeInsets.all(24),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -228,7 +235,9 @@ class _ContinueWatchingSectionState extends State<ContinueWatchingSection>
                 style: GoogleFonts.poppins(
                   fontSize: 18,
                   fontWeight: FontWeight.w600,
-                  color: const Color(0xFF2c3e50),
+                  color: themeService.isDarkMode 
+                      ? const Color(0xFFffffff)
+                      : const Color(0xFF2c3e50),
                 ),
               ),
               const SizedBox(height: 12),
@@ -237,7 +246,9 @@ class _ContinueWatchingSectionState extends State<ContinueWatchingSection>
                 '确定要清空所有播放记录吗？此操作无法撤销。',
                 style: GoogleFonts.poppins(
                   fontSize: 14,
-                  color: const Color(0xFF7f8c8d),
+                  color: themeService.isDarkMode 
+                      ? const Color(0xFFb0b0b0)
+                      : const Color(0xFF7f8c8d),
                   height: 1.4,
                 ),
                 textAlign: TextAlign.center,
@@ -260,7 +271,9 @@ class _ContinueWatchingSectionState extends State<ContinueWatchingSection>
                         style: GoogleFonts.poppins(
                           fontSize: 14,
                           fontWeight: FontWeight.w500,
-                          color: const Color(0xFF7f8c8d),
+                          color: themeService.isDarkMode 
+                              ? const Color(0xFFb0b0b0)
+                              : const Color(0xFF7f8c8d),
                         ),
                       ),
                     ),
@@ -294,6 +307,8 @@ class _ContinueWatchingSectionState extends State<ContinueWatchingSection>
               ),
             ],
           ),
+        );
+          },
         );
       },
     );
@@ -386,13 +401,19 @@ class _ContinueWatchingSectionState extends State<ContinueWatchingSection>
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  '继续观看',
-                  style: GoogleFonts.poppins(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                    color: const Color(0xFF2c3e50),
-                  ),
+                Consumer<ThemeService>(
+                  builder: (context, themeService, child) {
+                    return Text(
+                      '继续观看',
+                      style: GoogleFonts.poppins(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                        color: themeService.isDarkMode 
+                            ? const Color(0xFFffffff)
+                            : const Color(0xFF2c3e50),
+                      ),
+                    );
+                  },
                 ),
                 if (_playRecords.isNotEmpty)
                   TextButton(
@@ -507,7 +528,7 @@ class _ContinueWatchingSectionState extends State<ContinueWatchingSection>
     final double height = width * 1.4; // 保持与VideoCard相同的比例
     
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         // 封面骨架
         Container(
@@ -521,25 +542,29 @@ class _ContinueWatchingSectionState extends State<ContinueWatchingSection>
         ),
         const SizedBox(height: 6),
         // 标题骨架
-        Container(
-          height: 14,
-          width: width * 0.8,
-          decoration: BoxDecoration(
-            color: Colors.grey[300],
-            borderRadius: BorderRadius.circular(4),
+        Center(
+          child: Container(
+            height: 14,
+            width: width * 0.8,
+            decoration: BoxDecoration(
+              color: Colors.grey[300],
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: _buildShimmerEffect(),
           ),
-          child: _buildShimmerEffect(),
         ),
         const SizedBox(height: 4),
         // 源名称骨架
-        Container(
-          height: 10,
-          width: width * 0.6,
-          decoration: BoxDecoration(
-            color: Colors.grey[300],
-            borderRadius: BorderRadius.circular(4),
+        Center(
+          child: Container(
+            height: 10,
+            width: width * 0.6,
+            decoration: BoxDecoration(
+              color: Colors.grey[300],
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: _buildShimmerEffect(),
           ),
-          child: _buildShimmerEffect(),
         ),
       ],
     );
@@ -547,26 +572,36 @@ class _ContinueWatchingSectionState extends State<ContinueWatchingSection>
 
   /// 构建闪烁效果
   Widget _buildShimmerEffect() {
-    return AnimatedBuilder(
-      animation: _shimmerAnimation,
-      builder: (context, child) {
-        return Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.centerLeft,
-              end: Alignment.centerRight,
-              colors: [
-                Colors.grey[300]!,
-                Colors.grey[100]!,
-                Colors.grey[300]!,
-              ],
-              stops: [
-                0.0,
-                _shimmerAnimation.value,
-                1.0,
-              ],
-            ),
-          ),
+    return Consumer<ThemeService>(
+      builder: (context, themeService, child) {
+        return AnimatedBuilder(
+          animation: _shimmerAnimation,
+          builder: (context, child) {
+            return Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.centerLeft,
+                  end: Alignment.centerRight,
+                  colors: themeService.isDarkMode
+                      ? [
+                          const Color(0xFF333333),
+                          const Color(0xFF1a1a1a),
+                          const Color(0xFF333333),
+                        ]
+                      : [
+                          Colors.grey[300]!,
+                          Colors.grey[100]!,
+                          Colors.grey[300]!,
+                        ],
+                  stops: [
+                    0.0,
+                    _shimmerAnimation.value,
+                    1.0,
+                  ],
+                ),
+              ),
+            );
+          },
         );
       },
     );
