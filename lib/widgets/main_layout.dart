@@ -4,7 +4,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import '../services/theme_service.dart';
 
-class MainLayout extends StatelessWidget {
+class MainLayout extends StatefulWidget {
   final Widget content;
   final int currentBottomNavIndex;
   final Function(int) onBottomNavChanged;
@@ -23,6 +23,13 @@ class MainLayout extends StatelessWidget {
     this.isSearchMode = false,
     this.onSearchModeChanged,
   });
+
+  @override
+  State<MainLayout> createState() => _MainLayoutState();
+}
+
+class _MainLayoutState extends State<MainLayout> {
+  bool _isSearchButtonPressed = false;
 
   @override
   Widget build(BuildContext context) {
@@ -58,7 +65,7 @@ class MainLayout extends StatelessWidget {
                   _buildHeader(context, themeService),
                   // 主要内容区域
                   Expanded(
-                    child: content,
+                    child: widget.content,
                   ),
                 ],
               ),
@@ -98,32 +105,41 @@ class MainLayout extends StatelessWidget {
           Positioned(
             left: 0,
             top: 0,
-            child: Container(
-              width: 32,
-              height: 32,
-              child: Material(
-                color: Colors.transparent,
-                child: Ink(
-                  decoration: const BoxDecoration(
-                    shape: BoxShape.circle,
-                  ),
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(24),
-                    onTap: () {
-                      if (onSearchModeChanged != null) {
-                        onSearchModeChanged!(!isSearchMode);
-                      }
-                    },
-                    child: Center(
-                      child: Icon(
-                        LucideIcons.search,
-                        color: themeService.isDarkMode 
-                            ? const Color(0xFFffffff)
-                            : const Color(0xFF2c3e50),
-                        size: 24,
-                        weight: 1.0,
-                      ),
-                    ),
+            child: GestureDetector(
+              onTap: () {
+                // 防止重复点击
+                if (_isSearchButtonPressed) return;
+                
+                setState(() {
+                  _isSearchButtonPressed = true;
+                });
+                
+                final callback = widget.onSearchModeChanged;
+                if (callback != null) {
+                  callback(!widget.isSearchMode);
+                }
+                
+                // 延迟重置按钮状态，防止快速重复点击
+                Future.delayed(const Duration(milliseconds: 300), () {
+                  if (mounted) {
+                    setState(() {
+                      _isSearchButtonPressed = false;
+                    });
+                  }
+                });
+              },
+              behavior: HitTestBehavior.opaque, // 确保整个区域都可以点击
+              child: Container(
+                width: 32,
+                height: 32,
+                child: Center(
+                  child: Icon(
+                    LucideIcons.search,
+                    color: themeService.isDarkMode 
+                        ? const Color(0xFFffffff)
+                        : const Color(0xFF2c3e50),
+                    size: 24,
+                    weight: 1.0,
                   ),
                 ),
               ),
@@ -259,11 +275,11 @@ class MainLayout extends StatelessWidget {
             children: navItems.asMap().entries.map((entry) {
               int index = entry.key;
               Map<String, dynamic> item = entry.value;
-              bool isSelected = !isSearchMode && currentBottomNavIndex == index;
+              bool isSelected = !widget.isSearchMode && widget.currentBottomNavIndex == index;
               
               return GestureDetector(
                 onTap: () {
-                  onBottomNavChanged(index);
+                  widget.onBottomNavChanged(index);
                 },
                 behavior: HitTestBehavior.opaque, // 确保整个区域都可以点击
                 child: Container(

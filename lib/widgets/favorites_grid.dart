@@ -273,7 +273,7 @@ class _FavoritesGridState extends State<FavoritesGrid>
           final double minItemWidth = 80.0; // 最小项目宽度
           final double calculatedItemWidth = availableWidth / 3;
           final double itemWidth = math.max(calculatedItemWidth, minItemWidth);
-          final double itemHeight = itemWidth * 1.9; // 进一步增加高度比例，确保有足够空间避免溢出
+          final double itemHeight = itemWidth * 2.0; // 增加高度比例，确保有足够空间避免溢出
           
           return GridView.builder(
             padding: const EdgeInsets.all(16),
@@ -283,7 +283,7 @@ class _FavoritesGridState extends State<FavoritesGrid>
               crossAxisCount: 3, // 严格3列布局
               childAspectRatio: itemWidth / itemHeight, // 精确计算宽高比
               crossAxisSpacing: spacing, // 列间距
-              mainAxisSpacing: 32, // 增加行间距
+              mainAxisSpacing: 16, // 行间距
             ),
             itemCount: 6, // 显示6个骨架卡片
             itemBuilder: (context, index) {
@@ -477,7 +477,7 @@ class _FavoritesGridState extends State<FavoritesGrid>
           final double minItemWidth = 80.0; // 最小项目宽度
           final double calculatedItemWidth = availableWidth / 3;
           final double itemWidth = math.max(calculatedItemWidth, minItemWidth);
-          final double itemHeight = itemWidth * 1.9; // 进一步增加高度比例，确保有足够空间避免溢出
+          final double itemHeight = itemWidth * 2.0; // 增加高度比例，确保有足够空间避免溢出
           
           return GridView.builder(
             padding: const EdgeInsets.all(16),
@@ -487,7 +487,7 @@ class _FavoritesGridState extends State<FavoritesGrid>
               crossAxisCount: 3, // 严格3列布局
               childAspectRatio: itemWidth / itemHeight, // 精确计算宽高比
               crossAxisSpacing: spacing, // 列间距
-              mainAxisSpacing: 32, // 增加行间距
+              mainAxisSpacing: 16, // 行间距
             ),
             itemCount: _favorites.length,
             itemBuilder: (context, index) {

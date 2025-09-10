@@ -10,6 +10,7 @@ import '../widgets/top_tab_switcher.dart';
 import '../widgets/favorites_grid.dart';
 import '../widgets/search_content.dart';
 import '../models/play_record.dart';
+import '../models/video_info.dart';
 import 'movies_screen.dart';
 import 'series_screen.dart';
 import 'anime_screen.dart';
@@ -177,9 +178,30 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  /// 处理搜索结果视频卡片点击
+  void _onSearchVideoTap(VideoInfo videoInfo) {
+    // TODO: 实现搜索结果视频播放逻辑
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          '点击了搜索结果: ${videoInfo.title}',
+          style: GoogleFonts.poppins(color: Colors.white),
+        ),
+        backgroundColor: const Color(0xFF27ae60),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+        ),
+        margin: const EdgeInsets.all(16),
+      ),
+    );
+  }
+
   /// 构建搜索内容
   Widget _buildSearchContent() {
-    return const SearchContent();
+    return SearchContent(
+      onVideoTap: _onSearchVideoTap,
+    );
   }
 
 }

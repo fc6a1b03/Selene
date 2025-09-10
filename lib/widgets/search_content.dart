@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
@@ -5,9 +7,18 @@ import 'package:provider/provider.dart';
 import '../services/page_cache_service.dart';
 import '../services/api_service.dart';
 import '../services/theme_service.dart';
+import '../services/sse_search_service.dart';
+import '../models/search_result.dart';
+import '../models/video_info.dart';
+import '../widgets/video_card.dart';
 
 class SearchContent extends StatefulWidget {
-  const SearchContent({super.key});
+  final Function(VideoInfo)? onVideoTap;
+  
+  const SearchContent({
+    super.key,
+    this.onVideoTap,
+  });
 
   @override
   State<SearchContent> createState() => _SearchContentState();
@@ -18,12 +29,24 @@ class _SearchContentState extends State<SearchContent> {
   final FocusNode _searchFocusNode = FocusNode();
   String _searchQuery = '';
   List<String> _searchHistory = [];
-  List<Map<String, dynamic>> _searchResults = [];
+  List<SearchResult> _searchResults = [];
   bool _hasSearched = false;
+  bool _hasReceivedStart = false; // 是否已收到start消息
+  String? _searchError;
+  SearchProgress? _searchProgress;
+  Timer? _updateTimer; // 用于防抖的定时器
+  
+  late SSESearchService _searchService;
+  StreamSubscription<List<SearchResult>>? _incrementalResultsSubscription;
+  StreamSubscription<SearchProgress>? _progressSubscription;
+  StreamSubscription<String>? _errorSubscription;
+  StreamSubscription<SearchEvent>? _eventSubscription;
 
   @override
   void initState() {
     super.initState();
+    _searchService = SSESearchService();
+    _setupSearchListeners();
     _loadSearchHistory();
   }
 
@@ -31,7 +54,74 @@ class _SearchContentState extends State<SearchContent> {
   void dispose() {
     _searchController.dispose();
     _searchFocusNode.dispose();
+    _incrementalResultsSubscription?.cancel();
+    _progressSubscription?.cancel();
+    _errorSubscription?.cancel();
+    _eventSubscription?.cancel();
+    _updateTimer?.cancel();
+    _searchService.dispose();
     super.dispose();
+  }
+
+  /// 设置搜索监听器
+  void _setupSearchListeners() {
+    // 取消之前的监听器
+    _incrementalResultsSubscription?.cancel();
+    _progressSubscription?.cancel();
+    _errorSubscription?.cancel();
+    _eventSubscription?.cancel();
+    
+    // 监听搜索事件
+    _eventSubscription = _searchService.eventStream.listen((event) {
+      if (mounted) {
+        if (event is SearchStartEvent) {
+          setState(() {
+            _hasReceivedStart = true;
+          });
+        } else if (event is SearchSourceErrorEvent || event is SearchSourceResultEvent) {
+          // 收到源错误或源结果事件时，确保已标记为收到start消息
+          setState(() {
+            _hasReceivedStart = true;
+          });
+        }
+      }
+    });
+
+    // 监听增量搜索结果
+    _incrementalResultsSubscription = _searchService.incrementalResultsStream.listen((incrementalResults) {
+      if (mounted && incrementalResults.isNotEmpty) {
+        // 将增量结果添加到现有结果列表中
+        _searchResults.addAll(incrementalResults);
+        
+        // 使用防抖机制，避免过于频繁的UI更新
+        _updateTimer?.cancel();
+        _updateTimer = Timer(const Duration(milliseconds: 100), () {
+          if (mounted) {
+            setState(() {
+              // 触发UI更新
+            });
+          }
+        });
+      }
+    });
+
+    // 监听搜索进度
+    _progressSubscription = _searchService.progressStream.listen((progress) {
+      if (mounted) {
+        setState(() {
+          _searchProgress = progress;
+        });
+      }
+    });
+
+    // 监听搜索错误
+    _errorSubscription = _searchService.errorStream.listen((error) {
+      if (mounted) {
+        setState(() {
+          _searchError = error;
+        });
+      }
+    });
   }
 
   Future<void> _loadSearchHistory() async {
@@ -255,12 +345,16 @@ class _SearchContentState extends State<SearchContent> {
     }
   }
 
-  void _performSearch(String query) {
+  void _performSearch(String query) async {
     if (query.trim().isEmpty) return;
     
     setState(() {
       _searchQuery = query.trim();
       _hasSearched = true;
+      _hasReceivedStart = false; // 重置start状态
+      _searchError = null;
+      _searchResults.clear();
+      _searchProgress = null; // 清空进度信息
     });
 
     // 添加到搜索历史
@@ -276,44 +370,31 @@ class _SearchContentState extends State<SearchContent> {
     // 搜索框失焦
     _searchFocusNode.unfocus();
 
-    // TODO: 实现实际的搜索逻辑
-    _mockSearchResults();
-  }
-
-  void _mockSearchResults() {
-    // 模拟搜索结果
-    setState(() {
-      _searchResults = [
-        {
-          'title': '${_searchQuery} - 电影',
-          'type': '电影',
-          'year': '2023',
-          'rating': '8.5',
-          'poster': 'https://via.placeholder.com/150x200',
-        },
-        {
-          'title': '${_searchQuery} - 剧集',
-          'type': '剧集',
-          'year': '2022',
-          'rating': '9.1',
-          'poster': 'https://via.placeholder.com/150x200',
-        },
-        {
-          'title': '${_searchQuery} - 动漫',
-          'type': '动漫',
-          'year': '2024',
-          'rating': '8.8',
-          'poster': 'https://via.placeholder.com/150x200',
-        },
-      ];
-    });
+    try {
+      // 开始 SSE 搜索
+      await _searchService.startSearch(_searchQuery);
+      
+      // 重新设置监听器，确保流控制器已初始化
+      _setupSearchListeners();
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _searchError = e.toString();
+        });
+      }
+    }
   }
 
   void _clearSearch() {
     setState(() {
       _searchQuery = '';
-      // 不清空搜索结果，保持显示
-      // 不重置 _hasSearched，保持搜索结果页面
+      _hasSearched = false; // 重置搜索状态，回到搜索主页
+      _hasReceivedStart = false; // 重置start状态
+      _searchResults.clear(); // 清空搜索结果
+      _searchError = null; // 清空错误信息
+      _searchProgress = null; // 清空进度信息
+      // 停止当前搜索
+      _searchService.stopSearch();
     });
     _searchController.clear();
   }
@@ -323,25 +404,35 @@ class _SearchContentState extends State<SearchContent> {
     return Consumer<ThemeService>(
       builder: (context, themeService, child) {
         return SingleChildScrollView(
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const SizedBox(height: 20),
-                // 搜索框
-                _buildSearchBox(themeService),
-                const SizedBox(height: 24),
-                
-                if (!_hasSearched) ...[
-                  // 搜索历史（只有在从未搜索过时显示）
-                  _buildSearchHistory(themeService),
-                ] else ...[
-                  // 搜索结果（搜索过后始终显示，无论搜索框内容如何）
-                  _buildSearchResults(themeService),
-                ],
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SizedBox(height: 20),
+                    // 搜索框
+                    _buildSearchBox(themeService),
+                    const SizedBox(height: 24),
+                    
+                    if (!_hasSearched) ...[
+                      // 搜索历史（只有在从未搜索过时显示）
+                      _buildSearchHistory(themeService),
+                    ] else ...[
+                      // 搜索进度和结果
+                      if (_searchError != null)
+                        _buildSearchError(themeService),
+                    ],
+                  ],
+                ),
+              ),
+              if (_hasSearched) ...[
+                // 搜索结果区域，不添加额外padding
+                _buildSearchResults(themeService),
               ],
-            ),
+            ],
           ),
         );
       },
@@ -405,7 +496,7 @@ class _SearchContentState extends State<SearchContent> {
                           : const Color(0xFF7f8c8d), // 无内容时灰色
                   size: 20,
                 ),
-                onPressed: _searchQuery.trim().isNotEmpty 
+                onPressed: _searchQuery.trim().isNotEmpty
                     ? () => _performSearch(_searchQuery)
                     : null, // 无内容时禁用
               ),
@@ -425,9 +516,7 @@ class _SearchContentState extends State<SearchContent> {
         ),
         onSubmitted: _performSearch,
         onChanged: (value) {
-          setState(() {
-            _searchQuery = value;
-          });
+          _searchQuery = value;
         },
       ),
     );
@@ -516,166 +605,246 @@ class _SearchContentState extends State<SearchContent> {
     );
   }
 
-  Widget _buildSearchResults(ThemeService themeService) {
-    // 如果没有搜索结果，显示空状态
-    if (_searchResults.isEmpty) {
-      return const SizedBox.shrink();
-    }
 
+  /// 构建搜索错误显示
+  Widget _buildSearchError(ThemeService themeService) {
+    final error = _searchError;
+    if (error == null) return const SizedBox.shrink();
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFe74c3c).withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: const Color(0xFFe74c3c).withOpacity(0.3),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            Icons.error_outline,
+            color: const Color(0xFFe74c3c),
+            size: 20,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              error,
+              style: GoogleFonts.poppins(
+                fontSize: 14,
+                color: const Color(0xFFe74c3c),
+              ),
+            ),
+          ),
+          TextButton(
+            onPressed: () {
+              setState(() {
+                _searchError = null;
+              });
+            },
+            child: Text(
+              '重试',
+              style: GoogleFonts.poppins(
+                fontSize: 12,
+                color: const Color(0xFFe74c3c),
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSearchResults(ThemeService themeService) {
+    // 如果已搜索过，总是显示搜索结果区域
+    if (_hasSearched) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16.0),
+        child: _buildSearchResultsList(themeService),
+      );
+    }
+    
+    // 默认返回空容器
+    return const SizedBox.shrink();
+  }
+
+  Widget _buildSearchResultsList(ThemeService themeService) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          '搜索结果 (${_searchResults.length})',
-          style: GoogleFonts.poppins(
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
-            color: themeService.isDarkMode 
-                ? const Color(0xFFffffff)
-                : const Color(0xFF2c3e50),
-          ),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Text(
+              '搜索结果',
+              style: GoogleFonts.poppins(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                color: themeService.isDarkMode 
+                    ? const Color(0xFFffffff)
+                    : const Color(0xFF2c3e50),
+              ),
+            ),
+            if (_hasSearched) ...[
+              const SizedBox(width: 8),
+              if (_hasReceivedStart)
+                Text(
+                  _getProgressText(),
+                  style: GoogleFonts.poppins(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w400,
+                    color: themeService.isDarkMode 
+                        ? const Color(0xFFb0b0b0)
+                        : const Color(0xFF7f8c8d),
+                  ),
+                )
+              else
+                Transform.translate(
+                  offset: const Offset(2, -2), // 向上调整2像素
+                  child: SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF27ae60)),
+                    ),
+                  ),
+                ),
+            ],
+          ],
         ),
         const SizedBox(height: 16),
-        ListView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          itemCount: _searchResults.length,
-          itemBuilder: (context, index) {
-            final result = _searchResults[index];
-            return _buildSearchResultItem(result, themeService);
-          },
+        _SearchResultsGrid(
+          key: ValueKey(_searchResults.length), // 添加key以优化重渲染
+          results: _searchResults,
+          themeService: themeService,
+          onVideoTap: widget.onVideoTap,
+          hasReceivedStart: _hasReceivedStart,
         ),
       ],
     );
   }
 
-  Widget _buildSearchResultItem(Map<String, dynamic> result, ThemeService themeService) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        color: themeService.isDarkMode 
-            ? const Color(0xFF1e1e1e)
-            : Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: themeService.isDarkMode 
-                ? Colors.black.withOpacity(0.3)
-                : Colors.black.withOpacity(0.05),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+  String _getProgressText() {
+    if (_searchProgress != null) {
+      return '${_searchProgress!.completedSources}/${_searchProgress!.totalSources}';
+    }
+    return '0/0';
+  }
+}
+
+/// 搜索结果网格组件
+class _SearchResultsGrid extends StatefulWidget {
+  final List<SearchResult> results;
+  final ThemeService themeService;
+  final Function(VideoInfo)? onVideoTap;
+  final bool hasReceivedStart;
+
+  const _SearchResultsGrid({
+    super.key,
+    required this.results,
+    required this.themeService,
+    this.onVideoTap,
+    required this.hasReceivedStart,
+  });
+
+  @override
+  State<_SearchResultsGrid> createState() => _SearchResultsGridState();
+}
+
+class _SearchResultsGridState extends State<_SearchResultsGrid> with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context); // 必须调用以支持 AutomaticKeepAliveClientMixin
+    
+    if (widget.results.isEmpty && widget.hasReceivedStart) {
+      return _buildEmptyState();
+    }
+    
+    if (widget.results.isEmpty && !widget.hasReceivedStart) {
+      return const SizedBox.shrink(); // 搜索开始但未收到start消息时，不显示任何内容
+    }
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // 计算每列的宽度，确保严格三列布局
+        final double screenWidth = constraints.maxWidth;
+        final double padding = 16.0; // 左右padding
+        final double spacing = 12.0; // 列间距
+        final double availableWidth = screenWidth - (padding * 2) - (spacing * 2); // 减去padding和间距
+        // 确保最小宽度，防止负宽度约束
+        final double minItemWidth = 80.0; // 最小项目宽度
+        final double calculatedItemWidth = availableWidth / 3;
+        final double itemWidth = math.max(calculatedItemWidth, minItemWidth);
+        final double itemHeight = itemWidth * 2.0; // 增加高度比例，确保有足够空间避免溢出
+        
+        return GridView.builder(
+          padding: const EdgeInsets.only(top: 16, bottom: 16),
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 3, // 严格3列布局
+            childAspectRatio: itemWidth / itemHeight, // 精确计算宽高比
+            crossAxisSpacing: spacing, // 列间距
+            mainAxisSpacing: 16, // 行间距
+          ),
+          itemCount: widget.results.length,
+          itemBuilder: (context, index) {
+            final result = widget.results[index];
+            final videoInfo = result.toVideoInfo();
+            
+            return AnimatedContainer(
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeOut,
+              child: VideoCard(
+                key: ValueKey('${result.id}_${result.source}'), // 为每个卡片添加唯一key
+                videoInfo: videoInfo,
+                onTap: widget.onVideoTap != null ? () => widget.onVideoTap!(videoInfo) : null,
+                from: 'search',
+                cardWidth: itemWidth, // 传递计算出的宽度
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.search_off,
+            size: 80,
+            color: const Color(0xFFbdc3c7),
+          ),
+          const SizedBox(height: 24),
+          Text(
+            '暂无搜索结果',
+            style: GoogleFonts.poppins(
+              fontSize: 18,
+              fontWeight: FontWeight.w500,
+              color: const Color(0xFF7f8c8d),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            '请尝试其他关键词',
+            style: GoogleFonts.poppins(
+              fontSize: 14,
+              color: const Color(0xFF95a5a6),
+            ),
           ),
         ],
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            // 海报占位符
-            Container(
-              width: 60,
-              height: 80,
-              decoration: BoxDecoration(
-                color: themeService.isDarkMode 
-                    ? const Color(0xFF333333)
-                    : const Color(0xFFecf0f1),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Icon(
-                LucideIcons.image,
-                color: themeService.isDarkMode 
-                    ? const Color(0xFF666666)
-                    : const Color(0xFFbdc3c7),
-                size: 24,
-              ),
-            ),
-            const SizedBox(width: 16),
-            // 内容信息
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    result['title'],
-                    style: GoogleFonts.poppins(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: themeService.isDarkMode 
-                          ? const Color(0xFFffffff)
-                          : const Color(0xFF2c3e50),
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 2,
-                        ),
-                        decoration: BoxDecoration(
-                          color: themeService.isDarkMode 
-                              ? const Color(0xFF27ae60).withOpacity(0.2)
-                              : const Color(0xFF27ae60).withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Text(
-                          result['type'],
-                          style: GoogleFonts.poppins(
-                            fontSize: 12,
-                            color: const Color(0xFF27ae60),
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        result['year'],
-                        style: GoogleFonts.poppins(
-                          fontSize: 12,
-                          color: themeService.isDarkMode 
-                              ? const Color(0xFFb0b0b0)
-                              : const Color(0xFF7f8c8d),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Icon(
-                        LucideIcons.star,
-                        size: 12,
-                        color: const Color(0xFFf39c12),
-                      ),
-                      const SizedBox(width: 2),
-                      Text(
-                        result['rating'],
-                        style: GoogleFonts.poppins(
-                          fontSize: 12,
-                          color: themeService.isDarkMode 
-                              ? const Color(0xFFb0b0b0)
-                              : const Color(0xFF7f8c8d),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            // 更多按钮
-            IconButton(
-              onPressed: () {
-                // TODO: 实现更多操作
-              },
-              icon: Icon(
-                LucideIcons.ellipsis,
-                color: themeService.isDarkMode 
-                    ? const Color(0xFFb0b0b0)
-                    : const Color(0xFF7f8c8d),
-                size: 20,
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }

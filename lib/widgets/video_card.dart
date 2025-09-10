@@ -8,7 +8,7 @@ import '../services/theme_service.dart';
 class VideoCard extends StatelessWidget {
   final VideoInfo videoInfo;
   final VoidCallback? onTap;
-  final String from; // 场景值：'favorite', 'playrecord'
+  final String from; // 场景值：'favorite', 'playrecord', 'search'
   final double? cardWidth; // 卡片宽度，用于响应式布局
 
   const VideoCard({
@@ -38,7 +38,7 @@ class VideoCard extends StatelessWidget {
       child: Container(
         width: width,
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.center,
           mainAxisSize: MainAxisSize.min,
           children: [
             // 封面图片和进度指示器
@@ -118,14 +118,35 @@ class VideoCard extends StatelessWidget {
                     ),
                   ),
                 ),
+                // 年份徽章（搜索模式）
+                if (from == 'search' && videoInfo.year.isNotEmpty)
+                  Positioned(
+                    top: 4,
+                    left: 4,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF2c3e50).withOpacity(0.8),
+                        borderRadius: BorderRadius.circular(5),
+                      ),
+                      child: Text(
+                        videoInfo.year,
+                        style: GoogleFonts.poppins(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
                 // 集数指示器或评分指示器
                 if ((from == 'douban' || from == 'bangumi') && videoInfo.rate != null && videoInfo.rate!.isNotEmpty)
                   Positioned(
-                    top: 8,
-                    right: 8,
+                    top: 4,
+                    right: 4,
                     child: Container(
-                      width: 32,
-                      height: 32,
+                      width: 30,
+                      height: 30,
                       decoration: BoxDecoration(
                         color: const Color(0xFFe91e63), // 粉色圆形背景
                         shape: BoxShape.circle,
@@ -144,13 +165,13 @@ class VideoCard extends StatelessWidget {
                   )
                 else if (shouldShowEpisodeInfo)
                   Positioned(
-                    top: 8,
-                    right: 8,
+                    top: 4,
+                    right: 4,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
                       decoration: BoxDecoration(
                         color: const Color(0xFF27ae60),
-                        borderRadius: BorderRadius.circular(6),
+                        borderRadius: BorderRadius.circular(5),
                       ),
                       child: Text(
                         episodeText,
@@ -195,53 +216,57 @@ class VideoCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 2),
-            // 标题
+            // 标题和源名称容器，确保居中对齐
             Center(
-              child: Text(
-                videoInfo.title,
-                style: GoogleFonts.poppins(
-                  fontSize: width < 100 ? 12 : 13, // 根据宽度调整字体大小，调大字体
-                  fontWeight: FontWeight.w500,
-                  color: themeService.isDarkMode 
-                      ? const Color(0xFFffffff)
-                      : const Color(0xFF2c3e50),
-                ),
-                textAlign: TextAlign.center,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-            // 豆瓣模式和Bangumi模式不显示来源信息
-            if (from != 'douban' && from != 'bangumi') ...[
-              const SizedBox(height: 3), // 增加title和sourceName之间的间距
-              // 视频源名称
-              Center(
-                child: Container(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: width < 100 ? 2 : 4, 
-                    vertical: 2.0, // 增加垂直padding，让border不紧贴文字
-                  ),
-                  decoration: BoxDecoration(
-                    border: Border.all(
-                      color: const Color(0xFF7f8c8d),
-                      width: 0.8,
-                    ),
-                    borderRadius: BorderRadius.circular(3),
-                  ),
-                  child: Text(
-                    videoInfo.sourceName,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // 标题
+                  Text(
+                    videoInfo.title,
                     style: GoogleFonts.poppins(
-                      fontSize: width < 100 ? 11 : 12, // 根据宽度调整字体大小，调大字体
-                      color: const Color(0xFF7f8c8d),
-                      height: 1.0, // 进一步减少行高
+                      fontSize: width < 100 ? 12 : 13, // 根据宽度调整字体大小，调大字体
+                      fontWeight: FontWeight.w500,
+                      color: themeService.isDarkMode 
+                          ? const Color(0xFFffffff)
+                          : const Color(0xFF2c3e50),
                     ),
                     textAlign: TextAlign.center,
-                    maxLines: 1,
+                    maxLines: from == 'douban' ? 2 : 1, // 豆瓣模式允许两行，其他模式一行
                     overflow: TextOverflow.ellipsis,
                   ),
-                ),
+                  // 豆瓣模式和Bangumi模式不显示来源信息
+                  if (from != 'douban' && from != 'bangumi') ...[
+                    const SizedBox(height: 3), // 增加title和sourceName之间的间距
+                    // 视频源名称
+                    Container(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: width < 100 ? 2 : 4, 
+                        vertical: 2.0, // 增加垂直padding，让border不紧贴文字
+                      ),
+                      decoration: BoxDecoration(
+                        border: Border.all(
+                          color: const Color(0xFF7f8c8d),
+                          width: 0.8,
+                        ),
+                        borderRadius: BorderRadius.circular(3),
+                      ),
+                      child: Text(
+                        videoInfo.sourceName,
+                        style: GoogleFonts.poppins(
+                          fontSize: width < 100 ? 11 : 12, // 根据宽度调整字体大小，调大字体
+                          color: const Color(0xFF7f8c8d),
+                          height: 1.0, // 进一步减少行高
+                        ),
+                        textAlign: TextAlign.center,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ],
               ),
-            ],
+            ),
           ],
         ),
       ),
@@ -266,8 +291,11 @@ class VideoCard extends StatelessWidget {
       case 'favorite':
         return true; // 收藏夹中显示总集数
       case 'playrecord':
-      default:
         return true; // 播放记录中显示当前/总集数
+      case 'search':
+        return true; // 搜索模式中显示总集数
+      default:
+        return true; // 默认显示当前/总集数
     }
   }
 
@@ -277,8 +305,11 @@ class VideoCard extends StatelessWidget {
       case 'favorite':
         return '${videoInfo.totalEpisodes}'; // 收藏夹只显示总集数
       case 'playrecord':
-      default:
         return '${videoInfo.index}/${videoInfo.totalEpisodes}'; // 播放记录显示当前/总集数
+      case 'search':
+        return '${videoInfo.totalEpisodes}'; // 搜索模式只显示总集数
+      default:
+        return '${videoInfo.index}/${videoInfo.totalEpisodes}'; // 默认显示当前/总集数
     }
   }
 
@@ -291,6 +322,8 @@ class VideoCard extends StatelessWidget {
         return false; // 豆瓣模式不显示进度条
       case 'bangumi':
         return false; // Bangumi模式不显示进度条
+      case 'search':
+        return false; // 搜索模式不显示进度条
       case 'playrecord':
       default:
         return true; // 播放记录中显示进度条
