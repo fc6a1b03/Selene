@@ -388,6 +388,22 @@ class ApiService {
     }
   }
 
+  /// 删除播放记录
+  static Future<ApiResponse<void>> deletePlayRecord(String source, String id, BuildContext context) async {
+    try {
+      final key = '$source+$id';
+      final encodedKey = Uri.encodeComponent(key);
+      final response = await delete<void>(
+        '/api/playrecords?key=$encodedKey',
+        context: context,
+      );
+      
+      return response;
+    } catch (e) {
+      return ApiResponse.error('删除播放记录异常: ${e.toString()}');
+    }
+  }
+
   /// 检查网络连接状态
   static Future<bool> checkConnection() async {
     try {

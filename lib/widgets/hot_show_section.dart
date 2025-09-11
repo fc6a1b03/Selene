@@ -21,6 +21,11 @@ class HotShowSection extends StatefulWidget {
 
   @override
   State<HotShowSection> createState() => _HotShowSectionState();
+
+  /// 静态方法：刷新热门综艺数据
+  static Future<void> refreshHotShows() async {
+    await _HotShowSectionState._currentInstance?._loadHotShows();
+  }
 }
 
 class _HotShowSectionState extends State<HotShowSection> {
@@ -28,10 +33,15 @@ class _HotShowSectionState extends State<HotShowSection> {
   bool _isLoading = true;
   bool _hasError = false;
   final PageCacheService _cacheService = PageCacheService();
+  
+  // 静态变量存储当前实例
+  static _HotShowSectionState? _currentInstance;
 
   @override
   void initState() {
     super.initState();
+    // 设置当前实例
+    _currentInstance = this;
     _loadHotShows();
   }
 
@@ -68,6 +78,15 @@ class _HotShowSectionState extends State<HotShowSection> {
   /// 转换为VideoInfo列表
   List<VideoInfo> _convertToVideoInfos() {
     return _shows.map((show) => show.toVideoInfo()).toList();
+  }
+
+  @override
+  void dispose() {
+    // 清除当前实例引用
+    if (_currentInstance == this) {
+      _currentInstance = null;
+    }
+    super.dispose();
   }
 
   @override

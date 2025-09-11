@@ -359,4 +359,20 @@ class PageCacheService {
     
     return null;
   }
+
+  /// 从缓存中删除指定的播放记录
+  void removePlayRecordFromCache(String source, String id) {
+    const cacheKey = 'play_records';
+    final cachedData = getCache<List<PlayRecord>>(cacheKey);
+    
+    if (cachedData != null) {
+      // 创建新的列表，排除要删除的记录
+      final updatedRecords = cachedData.where((record) => 
+        !(record.source == source && record.id == id)
+      ).toList();
+      
+      // 更新缓存
+      setCache(cacheKey, updatedRecords);
+    }
+  }
 }

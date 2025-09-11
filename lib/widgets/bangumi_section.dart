@@ -21,6 +21,11 @@ class BangumiSection extends StatefulWidget {
 
   @override
   State<BangumiSection> createState() => _BangumiSectionState();
+
+  /// 静态方法：刷新新番放送数据
+  static Future<void> refreshBangumiCalendar() async {
+    await _BangumiSectionState._currentInstance?._loadBangumiCalendar();
+  }
 }
 
 class _BangumiSectionState extends State<BangumiSection> {
@@ -28,10 +33,15 @@ class _BangumiSectionState extends State<BangumiSection> {
   bool _isLoading = true;
   bool _hasError = false;
   final PageCacheService _cacheService = PageCacheService();
+  
+  // 静态变量存储当前实例
+  static _BangumiSectionState? _currentInstance;
 
   @override
   void initState() {
     super.initState();
+    // 设置当前实例
+    _currentInstance = this;
     _loadBangumiCalendar();
   }
 
@@ -68,6 +78,15 @@ class _BangumiSectionState extends State<BangumiSection> {
   /// 转换为VideoInfo列表
   List<VideoInfo> _convertToVideoInfos() {
     return _bangumiItems.map((item) => item.toVideoInfo()).toList();
+  }
+
+  @override
+  void dispose() {
+    // 清除当前实例引用
+    if (_currentInstance == this) {
+      _currentInstance = null;
+    }
+    super.dispose();
   }
 
   @override

@@ -26,6 +26,16 @@ class ContinueWatchingSection extends StatefulWidget {
 
   @override
   State<ContinueWatchingSection> createState() => _ContinueWatchingSectionState();
+
+  /// 静态方法：从外部移除播放记录
+  static void removePlayRecordFromUI(String source, String id) {
+    _ContinueWatchingSectionState._currentInstance?.removePlayRecordFromUI(source, id);
+  }
+
+  /// 静态方法：刷新播放记录
+  static Future<void> refreshPlayRecords() async {
+    await _ContinueWatchingSectionState._currentInstance?.refreshPlayRecords();
+  }
 }
 
 class _ContinueWatchingSectionState extends State<ContinueWatchingSection>
@@ -37,6 +47,9 @@ class _ContinueWatchingSectionState extends State<ContinueWatchingSection>
   late Animation<double> _shimmerAnimation;
   final PageCacheService _cacheService = PageCacheService();
   final FavoriteService _favoriteService = FavoriteService();
+  
+  // 静态变量存储当前实例
+  static _ContinueWatchingSectionState? _currentInstance;
 
   @override
   void initState() {
@@ -54,6 +67,9 @@ class _ContinueWatchingSectionState extends State<ContinueWatchingSection>
     ));
     _shimmerController.repeat();
     
+    // 设置当前实例
+    _currentInstance = this;
+    
     // 延迟执行异步操作，确保 initState 完成后再访问 context
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
@@ -65,6 +81,10 @@ class _ContinueWatchingSectionState extends State<ContinueWatchingSection>
   @override
   void dispose() {
     _shimmerController.dispose();
+    // 清除当前实例引用
+    if (_currentInstance == this) {
+      _currentInstance = null;
+    }
     super.dispose();
   }
 
@@ -653,5 +673,38 @@ class _ContinueWatchingSectionState extends State<ContinueWatchingSection>
       ),
     );
   }
+
+  /// 刷新播放记录列表（供外部调用）
+  Future<void> refreshPlayRecords() async {
+    if (!mounted) return;
+    
+    try {
+      // 强制从API获取最新数据并更新缓存
+      final records = await _cacheService.refreshPlayRecords(context);
+      
+      if (records != null && mounted) {
+        setState(() {
+          _playRecords = records;
+        });
+        
+        // 预加载新图片
+        _preloadImages(records);
+      }
+    } catch (e) {
+      // 刷新失败，静默处理
+    }
+  }
+
+  /// 从UI中移除指定的播放记录（供外部调用）
+  void removePlayRecordFromUI(String source, String id) {
+    if (!mounted) return;
+    
+    setState(() {
+      _playRecords.removeWhere((record) => 
+        record.source == source && record.id == id
+      );
+    });
+  }
+
 
 }

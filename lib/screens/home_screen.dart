@@ -10,8 +10,11 @@ import '../widgets/top_tab_switcher.dart';
 import '../widgets/favorites_grid.dart';
 import '../widgets/search_content.dart';
 import '../widgets/video_menu_bottom_sheet.dart';
+import '../widgets/custom_refresh_indicator.dart';
 import '../models/play_record.dart';
 import '../models/video_info.dart';
+import '../services/api_service.dart';
+import '../services/page_cache_service.dart';
 import 'movies_screen.dart';
 import 'series_screen.dart';
 import 'anime_screen.dart';
@@ -31,6 +34,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // 预加载所有页面，使用IndexedStack保持状态
   late final List<Widget> _pages;
+  
 
   @override
   void initState() {
@@ -48,96 +52,132 @@ class _HomeScreenState extends State<HomeScreen> {
     ];
   }
 
+  /// 刷新首页数据
+  Future<void> _refreshHomeData() async {
+    try {
+      // 调用各个组件的刷新方法
+      if (mounted) {
+        // 刷新继续观看组件
+        await ContinueWatchingSection.refreshPlayRecords();
+        
+        // 刷新收藏夹组件
+        await FavoritesGrid.refreshFavorites();
+        
+        // 刷新热门电影组件
+        await HotMoviesSection.refreshHotMovies();
+        
+        // 刷新热门剧集组件
+        await HotTvSection.refreshHotTvShows();
+        
+        // 刷新新番放送组件
+        await BangumiSection.refreshBangumiCalendar();
+        
+        // 刷新热门综艺组件
+        await HotShowSection.refreshHotShows();
+        
+        // 强制重建页面
+        setState(() {});
+      }
+    } catch (e) {
+      // 刷新失败，静默处理
+    }
+  }
+
   /// 重新构建首页内容（用于顶部标签切换）
   Widget _buildHomeContentForTab(String tab) {
-    return SingleChildScrollView(
-      child: Column(
-        children: [
-          // 顶部导航栏
-          TopTabSwitcher(
-            selectedTab: tab,
-            onTabChanged: _onTopTabChanged,
-          ),
-          // 根据选中的标签显示不同内容
-          tab == '首页'
-              ? Column(
-                  children: [
-                    const SizedBox(height: 8),
-                    // 继续观看组件
-                    ContinueWatchingSection(
-                      onVideoTap: _onVideoTap,
-                      onGlobalMenuAction: _onGlobalMenuAction,
-                    ),
-                    // 热门电影组件
-                    HotMoviesSection(
-                      onMovieTap: _onVideoTap,
-                      onMoreTap: () => _onBottomNavChanged(1), // 切换到电影页面
-                      onGlobalMenuAction: (videoInfo, action) => _onGlobalMenuActionFromVideoInfo(videoInfo, action),
-                    ),
-                    // 热门剧集组件
-                    HotTvSection(
-                      onTvTap: _onVideoTap,
-                      onMoreTap: () => _onBottomNavChanged(2), // 切换到剧集页面
-                      onGlobalMenuAction: (videoInfo, action) => _onGlobalMenuActionFromVideoInfo(videoInfo, action),
-                    ),
-                    // 新番放送组件
-                    BangumiSection(
-                      onBangumiTap: _onVideoTap,
-                      onMoreTap: () => _onBottomNavChanged(3), // 切换到动漫页面
-                      onGlobalMenuAction: (videoInfo, action) {
-                        // 转换为PlayRecord用于处理
-                        final playRecord = PlayRecord(
-                          id: videoInfo.id,
-                          source: videoInfo.source,
-                          title: videoInfo.title,
-                          sourceName: videoInfo.sourceName,
-                          year: videoInfo.year,
-                          cover: videoInfo.cover,
-                          index: videoInfo.index,
-                          totalEpisodes: videoInfo.totalEpisodes,
-                          playTime: videoInfo.playTime,
-                          totalTime: videoInfo.totalTime,
-                          saveTime: videoInfo.saveTime,
-                          searchTitle: videoInfo.searchTitle,
-                        );
-                        _onGlobalMenuAction(playRecord, action);
-                      },
-                    ),
-                    // 热门综艺组件
-                    HotShowSection(
-                      onShowTap: _onVideoTap,
-                      onMoreTap: () => _onBottomNavChanged(4), // 切换到综艺页面
-                      onGlobalMenuAction: (videoInfo, action) => _onGlobalMenuActionFromVideoInfo(videoInfo, action),
-                    ),
-                  ],
-                )
-              : Column(
-                  children: [
-                    const SizedBox(height: 4), // 收藏夹内容更靠近切换按钮
-                    FavoritesGrid(
-                      onVideoTap: _onVideoTap,
-                      onGlobalMenuAction: (VideoInfo videoInfo, VideoMenuAction action) {
-                        // 将VideoInfo转换为PlayRecord用于统一处理
-                        final playRecord = PlayRecord(
-                          id: videoInfo.id,
-                          source: videoInfo.source,
-                          title: videoInfo.title,
-                          sourceName: videoInfo.sourceName,
-                          year: videoInfo.year,
-                          cover: videoInfo.cover,
-                          index: videoInfo.index,
-                          totalEpisodes: videoInfo.totalEpisodes,
-                          playTime: videoInfo.playTime,
-                          totalTime: videoInfo.totalTime,
-                          saveTime: videoInfo.saveTime,
-                          searchTitle: videoInfo.searchTitle,
-                        );
-                        _onGlobalMenuAction(playRecord, action);
-                      },
-                    ),
-                  ],
-                ),
-        ],
+    return StyledRefreshIndicator(
+      onRefresh: _refreshHomeData,
+      refreshText: '刷新中...',
+      primaryColor: const Color(0xFF27AE60), // 绿色主题
+      child: SingleChildScrollView(
+        child: Column(
+          children: [
+            // 顶部导航栏
+            TopTabSwitcher(
+              selectedTab: tab,
+              onTabChanged: _onTopTabChanged,
+            ),
+            // 根据选中的标签显示不同内容
+            tab == '首页'
+                ? Column(
+                    children: [
+                      const SizedBox(height: 8),
+                      // 继续观看组件
+                      ContinueWatchingSection(
+                        onVideoTap: _onVideoTap,
+                        onGlobalMenuAction: _onGlobalMenuAction,
+                      ),
+                      // 热门电影组件
+                      HotMoviesSection(
+                        onMovieTap: _onVideoTap,
+                        onMoreTap: () => _onBottomNavChanged(1), // 切换到电影页面
+                        onGlobalMenuAction: (videoInfo, action) => _onGlobalMenuActionFromVideoInfo(videoInfo, action),
+                      ),
+                      // 热门剧集组件
+                      HotTvSection(
+                        onTvTap: _onVideoTap,
+                        onMoreTap: () => _onBottomNavChanged(2), // 切换到剧集页面
+                        onGlobalMenuAction: (videoInfo, action) => _onGlobalMenuActionFromVideoInfo(videoInfo, action),
+                      ),
+                      // 新番放送组件
+                      BangumiSection(
+                        onBangumiTap: _onVideoTap,
+                        onMoreTap: () => _onBottomNavChanged(3), // 切换到动漫页面
+                        onGlobalMenuAction: (videoInfo, action) {
+                          // 转换为PlayRecord用于处理
+                          final playRecord = PlayRecord(
+                            id: videoInfo.id,
+                            source: videoInfo.source,
+                            title: videoInfo.title,
+                            sourceName: videoInfo.sourceName,
+                            year: videoInfo.year,
+                            cover: videoInfo.cover,
+                            index: videoInfo.index,
+                            totalEpisodes: videoInfo.totalEpisodes,
+                            playTime: videoInfo.playTime,
+                            totalTime: videoInfo.totalTime,
+                            saveTime: videoInfo.saveTime,
+                            searchTitle: videoInfo.searchTitle,
+                          );
+                          _onGlobalMenuAction(playRecord, action);
+                        },
+                      ),
+                      // 热门综艺组件
+                      HotShowSection(
+                        onShowTap: _onVideoTap,
+                        onMoreTap: () => _onBottomNavChanged(4), // 切换到综艺页面
+                        onGlobalMenuAction: (videoInfo, action) => _onGlobalMenuActionFromVideoInfo(videoInfo, action),
+                      ),
+                    ],
+                  )
+                : Column(
+                    children: [
+                      const SizedBox(height: 4), // 收藏夹内容更靠近切换按钮
+                      FavoritesGrid(
+                        onVideoTap: _onVideoTap,
+                        onGlobalMenuAction: (VideoInfo videoInfo, VideoMenuAction action) {
+                          // 将VideoInfo转换为PlayRecord用于统一处理
+                          final playRecord = PlayRecord(
+                            id: videoInfo.id,
+                            source: videoInfo.source,
+                            title: videoInfo.title,
+                            sourceName: videoInfo.sourceName,
+                            year: videoInfo.year,
+                            cover: videoInfo.cover,
+                            index: videoInfo.index,
+                            totalEpisodes: videoInfo.totalEpisodes,
+                            playTime: videoInfo.playTime,
+                            totalTime: videoInfo.totalTime,
+                            saveTime: videoInfo.saveTime,
+                            searchTitle: videoInfo.searchTitle,
+                          );
+                          _onGlobalMenuAction(playRecord, action);
+                        },
+                      ),
+                    ],
+                  ),
+          ],
+        ),
       ),
     );
   }
@@ -310,20 +350,7 @@ class _HomeScreenState extends State<HomeScreen> {
         break;
       case VideoMenuAction.deleteRecord:
         // 删除记录
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              '删除记录: ${playRecord.title}',
-              style: GoogleFonts.poppins(color: Colors.white),
-            ),
-            backgroundColor: const Color(0xFFE74C3C),
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
-            margin: const EdgeInsets.all(16),
-          ),
-        );
+        _deletePlayRecord(playRecord);
         break;
       case VideoMenuAction.doubanDetail:
         // 豆瓣详情 - 已在组件内部处理URL跳转
@@ -386,6 +413,71 @@ class _HomeScreenState extends State<HomeScreen> {
     return SearchContent(
       onVideoTap: _onSearchVideoTap,
     );
+  }
+
+  /// 从继续观看UI中移除播放记录
+  void _removePlayRecordFromUI(PlayRecord playRecord) {
+    // 调用继续观看组件的静态移除方法
+    ContinueWatchingSection.removePlayRecordFromUI(
+      playRecord.source, 
+      playRecord.id
+    );
+  }
+
+  /// 删除播放记录
+  Future<void> _deletePlayRecord(PlayRecord playRecord) async {
+    try {
+      // 先从UI中移除记录
+      _removePlayRecordFromUI(playRecord);
+      
+      // 更新缓存，从缓存中移除记录
+      final cacheService = PageCacheService();
+      cacheService.removePlayRecordFromCache(playRecord.source, playRecord.id);
+      
+      // 调用API删除记录
+      final response = await ApiService.deletePlayRecord(
+        playRecord.source,
+        playRecord.id,
+        context,
+      );
+      
+      if (!response.success) {
+        throw Exception(response.message ?? '删除失败');
+      }
+    } catch (e) {
+      // 删除失败时显示错误提示
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              '删除失败: ${e.toString()}',
+              style: GoogleFonts.poppins(color: Colors.white),
+            ),
+            backgroundColor: const Color(0xFFe74c3c),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+            margin: const EdgeInsets.all(16),
+          ),
+        );
+      }
+    } finally {
+      // 异步刷新播放记录缓存
+      if (mounted) {
+        _refreshPlayRecordsCache();
+      }
+    }
+  }
+
+  /// 异步刷新播放记录缓存
+  Future<void> _refreshPlayRecordsCache() async {
+    try {
+      final cacheService = PageCacheService();
+      await cacheService.refreshPlayRecords(context);
+    } catch (e) {
+      // 刷新缓存失败，静默处理
+    }
   }
 
 }

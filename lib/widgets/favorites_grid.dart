@@ -22,6 +22,11 @@ class FavoritesGrid extends StatefulWidget {
 
   @override
   State<FavoritesGrid> createState() => _FavoritesGridState();
+
+  /// 静态方法：刷新收藏夹数据
+  static Future<void> refreshFavorites() async {
+    await _FavoritesGridState._currentInstance?._refreshDataInBackground();
+  }
 }
 
 class _FavoritesGridState extends State<FavoritesGrid>
@@ -33,6 +38,9 @@ class _FavoritesGridState extends State<FavoritesGrid>
   late AnimationController _shimmerController;
   late Animation<double> _shimmerAnimation;
   final PageCacheService _cacheService = PageCacheService();
+  
+  // 静态变量存储当前实例
+  static _FavoritesGridState? _currentInstance;
 
   @override
   void initState() {
@@ -49,12 +57,20 @@ class _FavoritesGridState extends State<FavoritesGrid>
       curve: Curves.easeInOut,
     ));
     _shimmerController.repeat();
+    
+    // 设置当前实例
+    _currentInstance = this;
+    
     _loadData();
   }
 
   @override
   void dispose() {
     _shimmerController.dispose();
+    // 清除当前实例引用
+    if (_currentInstance == this) {
+      _currentInstance = null;
+    }
     super.dispose();
   }
 

@@ -21,6 +21,11 @@ class HotMoviesSection extends StatefulWidget {
 
   @override
   State<HotMoviesSection> createState() => _HotMoviesSectionState();
+
+  /// 静态方法：刷新热门电影数据
+  static Future<void> refreshHotMovies() async {
+    await _HotMoviesSectionState._currentInstance?._loadHotMovies();
+  }
 }
 
 class _HotMoviesSectionState extends State<HotMoviesSection> {
@@ -28,10 +33,15 @@ class _HotMoviesSectionState extends State<HotMoviesSection> {
   bool _isLoading = true;
   bool _hasError = false;
   final PageCacheService _cacheService = PageCacheService();
+  
+  // 静态变量存储当前实例
+  static _HotMoviesSectionState? _currentInstance;
 
   @override
   void initState() {
     super.initState();
+    // 设置当前实例
+    _currentInstance = this;
     _loadHotMovies();
   }
 
@@ -70,6 +80,14 @@ class _HotMoviesSectionState extends State<HotMoviesSection> {
     return _movies.map((movie) => movie.toVideoInfo()).toList();
   }
 
+  @override
+  void dispose() {
+    // 清除当前实例引用
+    if (_currentInstance == this) {
+      _currentInstance = null;
+    }
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
