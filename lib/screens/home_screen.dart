@@ -147,7 +147,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return MainLayout(
       content: _isSearchMode
           ? _buildSearchContent()
-          : _currentBottomNavIndex == 0 
+          : _currentBottomNavIndex == 0
               ? _buildHomeContentForTab(_selectedTopTab)
               : IndexedStack(
                   index: _currentBottomNavIndex,
@@ -159,6 +159,7 @@ class _HomeScreenState extends State<HomeScreen> {
       onTopTabChanged: _onTopTabChanged,
       isSearchMode: _isSearchMode,
       onSearchModeChanged: _onSearchModeChanged,
+      onHomeTap: _onHomeTap,
     );
   }
 
@@ -196,6 +197,20 @@ class _HomeScreenState extends State<HomeScreen> {
   void _onSearchModeChanged(bool isSearchMode) {
     setState(() {
       _isSearchMode = isSearchMode;
+    });
+  }
+
+  /// 处理点击 Selene 标题跳转到首页
+  void _onHomeTap() {
+    setState(() {
+      // 如果在搜索模式下，先退出搜索模式
+      if (_isSearchMode) {
+        _isSearchMode = false;
+      }
+      // 切换到首页
+      _currentBottomNavIndex = 0;
+      // 切换到首页标签
+      _selectedTopTab = '首页';
     });
   }
 

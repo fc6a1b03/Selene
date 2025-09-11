@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import '../services/theme_service.dart';
+import 'user_menu.dart';
 
 class MainLayout extends StatefulWidget {
   final Widget content;
@@ -12,6 +13,7 @@ class MainLayout extends StatefulWidget {
   final Function(String) onTopTabChanged;
   final bool isSearchMode;
   final Function(bool)? onSearchModeChanged;
+  final VoidCallback? onHomeTap;
 
   const MainLayout({
     super.key,
@@ -22,6 +24,7 @@ class MainLayout extends StatefulWidget {
     required this.onTopTabChanged,
     this.isSearchMode = false,
     this.onSearchModeChanged,
+    this.onHomeTap,
   });
 
   @override
@@ -30,6 +33,7 @@ class MainLayout extends StatefulWidget {
 
 class _MainLayoutState extends State<MainLayout> {
   bool _isSearchButtonPressed = false;
+  bool _showUserMenu = false;
 
   @override
   Widget build(BuildContext context) {
@@ -38,37 +42,51 @@ class _MainLayoutState extends State<MainLayout> {
         return Theme(
           data: themeService.isDarkMode ? themeService.darkTheme : themeService.lightTheme,
           child: Scaffold(
-            body: Container(
-              decoration: BoxDecoration(
-                color: themeService.isDarkMode 
-                    ? const Color(0xFF000000) // 深色模式纯黑色
-                    : null,
-                gradient: themeService.isDarkMode 
-                    ? null
-                    : const LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          Color(0xFFe6f3fb), // 浅色模式渐变
-                          Color(0xFFeaf3f7),
-                          Color(0xFFf7f7f3),
-                          Color(0xFFe9ecef),
-                          Color(0xFFdbe3ea),
-                          Color(0xFFd3dde6),
-                        ],
-                        stops: [0.0, 0.18, 0.38, 0.60, 0.80, 1.0],
-                      ),
-              ),
-              child: Column(
-                children: [
-                  // 固定 Header
-                  _buildHeader(context, themeService),
-                  // 主要内容区域
-                  Expanded(
-                    child: widget.content,
+            body: Stack(
+              children: [
+                Container(
+                  decoration: BoxDecoration(
+                    color: themeService.isDarkMode 
+                        ? const Color(0xFF000000) // 深色模式纯黑色
+                        : null,
+                    gradient: themeService.isDarkMode 
+                        ? null
+                        : const LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              Color(0xFFe6f3fb), // 浅色模式渐变
+                              Color(0xFFeaf3f7),
+                              Color(0xFFf7f7f3),
+                              Color(0xFFe9ecef),
+                              Color(0xFFdbe3ea),
+                              Color(0xFFd3dde6),
+                            ],
+                            stops: [0.0, 0.18, 0.38, 0.60, 0.80, 1.0],
+                          ),
                   ),
-                ],
-              ),
+                  child: Column(
+                    children: [
+                      // 固定 Header
+                      _buildHeader(context, themeService),
+                      // 主要内容区域
+                      Expanded(
+                        child: widget.content,
+                      ),
+                    ],
+                  ),
+                ),
+                // 用户菜单覆盖层
+                if (_showUserMenu)
+                  UserMenu(
+                    isDarkMode: themeService.isDarkMode,
+                    onClose: () {
+                      setState(() {
+                        _showUserMenu = false;
+                      });
+                    },
+                  ),
+              ],
             ),
             // 固定底部导航栏
             bottomNavigationBar: _buildBottomNavBar(themeService),
@@ -147,15 +165,19 @@ class _MainLayoutState extends State<MainLayout> {
           ),
           // 完全居中的 Logo
           Center(
-            child: Text(
-              'Selene',
-              style: GoogleFonts.poppins(
-                fontSize: 24,
-                fontWeight: FontWeight.w300,
-                color: themeService.isDarkMode 
-                    ? const Color(0xFFffffff)
-                    : const Color(0xFF2c3e50),
-                letterSpacing: 1.5,
+            child: GestureDetector(
+              onTap: widget.onHomeTap,
+              behavior: HitTestBehavior.opaque,
+              child: Text(
+                'Selene',
+                style: GoogleFonts.poppins(
+                  fontSize: 24,
+                  fontWeight: FontWeight.w300,
+                  color: themeService.isDarkMode 
+                      ? const Color(0xFFffffff)
+                      : const Color(0xFF2c3e50),
+                  letterSpacing: 1.5,
+                ),
               ),
             ),
           ),
@@ -220,7 +242,9 @@ class _MainLayoutState extends State<MainLayout> {
                       child: InkWell(
                         borderRadius: BorderRadius.circular(24),
                         onTap: () {
-                          // TODO: 实现用户功能
+                          setState(() {
+                            _showUserMenu = true;
+                          });
                         },
                         child: Center(
                           child: Icon(

@@ -59,6 +59,13 @@ class UserDataService {
     await prefs.remove(_cookiesKey);
   }
 
+  // 只清除密码和cookies，保留服务器地址和用户名
+  static Future<void> clearPasswordAndCookies() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_passwordKey);
+    await prefs.remove(_cookiesKey);
+  }
+
   // 获取所有用户数据
   static Future<Map<String, String?>> getAllUserData() async {
     final prefs = await SharedPreferences.getInstance();
