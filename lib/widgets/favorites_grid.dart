@@ -87,8 +87,8 @@ class _FavoritesGridState extends State<FavoritesGrid>
 
     try {
       // 先尝试从缓存获取收藏夹数据
-      final cachedFavorites = _cacheService.getCache<List<FavoriteItem>>('favorites');
-      final cachedPlayRecords = _cacheService.getCache<List<PlayRecord>>('play_records');
+      final cachedFavorites = _cacheService.getCachedFavorites();
+      final cachedPlayRecords = _cacheService.getCachedPlayRecords();
       
       if (cachedFavorites != null && cachedPlayRecords != null) {
         // 有缓存数据，立即显示
@@ -139,14 +139,14 @@ class _FavoritesGridState extends State<FavoritesGrid>
   /// 刷新收藏夹数据
   Future<void> _refreshFavorites() async {
     try {
-      final favorites = await _cacheService.refreshFavorites(context);
+      final result = await _cacheService.refreshFavorites(context);
       
-      if (favorites != null && mounted) {
+      if (result.success && result.data != null && mounted) {
         // 只有当新数据与当前数据不同时才更新UI
-        if (_favorites.length != favorites.length || 
-            !_isSameFavorites(_favorites, favorites)) {
+        if (_favorites.length != result.data!.length || 
+            !_isSameFavorites(_favorites, result.data!)) {
           setState(() {
-            _favorites = favorites;
+            _favorites = result.data!;
           });
         }
       }
@@ -159,14 +159,14 @@ class _FavoritesGridState extends State<FavoritesGrid>
   /// 刷新播放记录数据
   Future<void> _refreshPlayRecords() async {
     try {
-      final records = await _cacheService.refreshPlayRecords(context);
+      final result = await _cacheService.refreshPlayRecords(context);
       
-      if (records != null && mounted) {
+      if (result.success && result.data != null && mounted) {
         // 只有当新数据与当前数据不同时才更新UI
-        if (_playRecords.length != records.length || 
-            !_isSamePlayRecords(_playRecords, records)) {
+        if (_playRecords.length != result.data!.length || 
+            !_isSamePlayRecords(_playRecords, result.data!)) {
           setState(() {
-            _playRecords = records;
+            _playRecords = result.data!;
           });
         }
       }
@@ -218,14 +218,14 @@ class _FavoritesGridState extends State<FavoritesGrid>
   Future<void> _loadFavorites() async {
     try {
       // 使用缓存服务获取数据
-      final favorites = await _cacheService.getFavorites(context);
+      final result = await _cacheService.getFavorites(context);
       
-      if (favorites != null) {
+      if (result.success && result.data != null) {
         setState(() {
-          _favorites = favorites;
+          _favorites = result.data!;
         });
       } else {
-        throw Exception('获取收藏夹失败');
+        throw Exception(result.errorMessage ?? '获取收藏夹失败');
       }
     } catch (e) {
       throw Exception('获取收藏夹失败: $e');
@@ -235,14 +235,14 @@ class _FavoritesGridState extends State<FavoritesGrid>
   Future<void> _loadPlayRecords() async {
     try {
       // 使用缓存服务获取数据
-      final records = await _cacheService.getPlayRecords(context);
+      final result = await _cacheService.getPlayRecords(context);
 
-      if (records != null) {
+      if (result.success && result.data != null) {
         setState(() {
-          _playRecords = records;
+          _playRecords = result.data!;
         });
       } else {
-        throw Exception('获取播放记录失败');
+        throw Exception(result.errorMessage ?? '获取播放记录失败');
       }
     } catch (e) {
       throw Exception('获取播放记录失败: $e');

@@ -154,10 +154,10 @@ class _SearchScreenState extends State<SearchScreen> with TickerProviderStateMix
   Future<void> _loadSearchHistory() async {
     // 首先尝试从缓存加载数据
     try {
-      final cachedHistory = await PageCacheService().getSearchHistory(context);
+      final result = await PageCacheService().getSearchHistory(context);
       if (mounted) {
         setState(() {
-          _searchHistory = cachedHistory ?? [];
+          _searchHistory = result.success ? (result.data ?? []) : [];
         });
       }
     } catch (e) {
@@ -175,10 +175,10 @@ class _SearchScreenState extends State<SearchScreen> with TickerProviderStateMix
 
   Future<void> _refreshSearchHistory() async {
     try {
-      final history = await PageCacheService().refreshSearchHistory(context);
+      final result = await PageCacheService().refreshSearchHistory(context);
       if (mounted) {
         setState(() {
-          _searchHistory = history ?? [];
+          _searchHistory = result.success ? (result.data ?? []) : [];
         });
       }
     } catch (e) {

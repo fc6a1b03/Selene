@@ -121,17 +121,17 @@ class _ContinueWatchingSectionState extends State<ContinueWatchingSection>
         _refreshDataInBackground();
       } else {
         // 没有缓存，从API获取
-        final records = await _cacheService.getPlayRecords(context);
+        final result = await _cacheService.getPlayRecords(context);
 
         if (mounted) {
-          if (records != null) {
+          if (result.success && result.data != null) {
             setState(() {
-              _playRecords = records;
+              _playRecords = result.data!;
               _isLoading = false;
             });
             
             // 预加载图片
-            _preloadImages(records);
+            _preloadImages(result.data!);
           } else {
             setState(() {
               _hasError = true;
@@ -157,19 +157,19 @@ class _ContinueWatchingSectionState extends State<ContinueWatchingSection>
     
     try {
       // 只刷新播放记录数据
-      final records = await _cacheService.refreshPlayRecords(context);
+      final result = await _cacheService.refreshPlayRecords(context);
       
-      if (records != null && mounted) {
+      if (result.success && result.data != null && mounted) {
         // 只有当新数据与当前数据不同时才更新UI
-        if (_playRecords.length != records.length || 
-            !_isSamePlayRecords(_playRecords, records)) {
+        if (_playRecords.length != result.data!.length || 
+            !_isSamePlayRecords(_playRecords, result.data!)) {
           if (mounted) {
             setState(() {
-              _playRecords = records;
+              _playRecords = result.data!;
             });
             
             // 预加载新图片
-            _preloadImages(records);
+            _preloadImages(result.data!);
           }
         }
       }
@@ -680,15 +680,15 @@ class _ContinueWatchingSectionState extends State<ContinueWatchingSection>
     
     try {
       // 强制从API获取最新数据并更新缓存
-      final records = await _cacheService.refreshPlayRecords(context);
+      final result = await _cacheService.refreshPlayRecords(context);
       
-      if (records != null && mounted) {
+      if (result.success && result.data != null && mounted) {
         setState(() {
-          _playRecords = records;
+          _playRecords = result.data!;
         });
         
         // 预加载新图片
-        _preloadImages(records);
+        _preloadImages(result.data!);
       }
     } catch (e) {
       // 刷新失败，静默处理

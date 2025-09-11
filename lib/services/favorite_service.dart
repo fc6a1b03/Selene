@@ -4,7 +4,7 @@ import '../models/play_record.dart';
 import '../models/video_info.dart';
 import 'page_cache_service.dart';
 
-/// 收藏服务
+/// 收藏服务 - 使用重构后的 PageCacheService
 class FavoriteService {
   static final FavoriteService _instance = FavoriteService._internal();
   factory FavoriteService() => _instance;
@@ -14,71 +14,50 @@ class FavoriteService {
 
   /// 检查播放记录是否已收藏
   Future<bool> isFavorited(PlayRecord playRecord, BuildContext context) async {
-    try {
-      final favorites = await _cacheService.getFavorites(context);
-      if (favorites == null || favorites.isEmpty) return false;
-      
-      // 根据 source+id 检查是否在收藏列表中
-      final key = '${playRecord.source}+${playRecord.id}';
-      return favorites.any((favorite) => '${favorite.source}+${favorite.id}' == key);
-    } catch (e) {
-      return false;
-    }
+    return await _cacheService.isPlayRecordFavorited(playRecord, context);
   }
 
   /// 检查视频信息是否已收藏
   Future<bool> isFavoritedByVideoInfo(VideoInfo videoInfo, BuildContext context) async {
-    try {
-      final favorites = await _cacheService.getFavorites(context);
-      if (favorites == null || favorites.isEmpty) return false;
-      
-      // 根据 source+id 检查是否在收藏列表中
-      final key = '${videoInfo.source}+${videoInfo.id}';
-      return favorites.any((favorite) => '${favorite.source}+${favorite.id}' == key);
-    } catch (e) {
-      return false;
-    }
+    return await _cacheService.isFavorited(videoInfo.source, videoInfo.id, context);
   }
 
   /// 检查指定 source+id 是否已收藏
   Future<bool> isFavoritedByKey(String source, String id, BuildContext context) async {
-    try {
-      final favorites = await _cacheService.getFavorites(context);
-      if (favorites == null || favorites.isEmpty) return false;
-      
-      // 根据 source+id 检查是否在收藏列表中
-      final key = '$source+$id';
-      return favorites.any((favorite) => '${favorite.source}+${favorite.id}' == key);
-    } catch (e) {
-      return false;
-    }
+    return await _cacheService.isFavorited(source, id, context);
   }
 
   /// 同步检查收藏状态（使用缓存）
   bool isFavoritedSync(PlayRecord playRecord) {
-    try {
-      final favorites = _cacheService.getCache<List<FavoriteItem>>('favorites');
-      if (favorites == null || favorites.isEmpty) return false;
-      
-      // 根据 source+id 检查是否在收藏列表中
-      final key = '${playRecord.source}+${playRecord.id}';
-      return favorites.any((favorite) => '${favorite.source}+${favorite.id}' == key);
-    } catch (e) {
-      return false;
-    }
+    return _cacheService.isPlayRecordFavoritedSync(playRecord);
   }
 
   /// 同步检查视频信息收藏状态（使用缓存）
   bool isFavoritedSyncByVideoInfo(VideoInfo videoInfo) {
-    try {
-      final favorites = _cacheService.getCache<List<FavoriteItem>>('favorites');
-      if (favorites == null || favorites.isEmpty) return false;
-      
-      // 根据 source+id 检查是否在收藏列表中
-      final key = '${videoInfo.source}+${videoInfo.id}';
-      return favorites.any((favorite) => '${favorite.source}+${favorite.id}' == key);
-    } catch (e) {
-      return false;
-    }
+    return _cacheService.isFavoritedSync(videoInfo.source, videoInfo.id);
+  }
+
+  /// 添加收藏
+  Future<bool> addFavorite(String source, String id, Map<String, dynamic> favoriteData, BuildContext context) async {
+    final result = await _cacheService.addFavorite(source, id, favoriteData, context);
+    return result.success;
+  }
+
+  /// 取消收藏
+  Future<bool> removeFavorite(String source, String id, BuildContext context) async {
+    final result = await _cacheService.removeFavorite(source, id, context);
+    return result.success;
+  }
+
+  /// 获取收藏夹
+  Future<List<FavoriteItem>?> getFavorites(BuildContext context) async {
+    final result = await _cacheService.getFavorites(context);
+    return result.success ? result.data : null;
+  }
+
+  /// 刷新收藏夹
+  Future<List<FavoriteItem>?> refreshFavorites(BuildContext context) async {
+    final result = await _cacheService.refreshFavorites(context);
+    return result.success ? result.data : null;
   }
 }
