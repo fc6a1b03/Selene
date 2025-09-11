@@ -16,42 +16,25 @@ class PageCacheService {
 
   // 缓存数据
   final Map<String, dynamic> _cache = {};
-  final Map<String, DateTime> _cacheTimestamps = {};
-  
-  // 缓存过期时间（5分钟）
-  static const Duration _cacheExpiry = Duration(minutes: 5);
-
-  /// 检查缓存是否有效
-  bool _isCacheValid(String key) {
-    final timestamp = _cacheTimestamps[key];
-    if (timestamp == null) return false;
-    return DateTime.now().difference(timestamp) < _cacheExpiry;
-  }
 
   /// 获取缓存数据
   T? getCache<T>(String key) {
-    if (_isCacheValid(key)) {
-      return _cache[key] as T?;
-    }
-    return null;
+    return _cache[key] as T?;
   }
 
   /// 设置缓存数据
   void setCache<T>(String key, T data) {
     _cache[key] = data;
-    _cacheTimestamps[key] = DateTime.now();
   }
 
   /// 清除指定缓存
   void clearCache(String key) {
     _cache.remove(key);
-    _cacheTimestamps.remove(key);
   }
 
   /// 清除所有缓存
   void clearAllCache() {
     _cache.clear();
-    _cacheTimestamps.clear();
   }
 
   /// 获取播放记录
@@ -61,6 +44,8 @@ class PageCacheService {
     // 先检查缓存
     final cachedData = getCache<List<PlayRecord>>(cacheKey);
     if (cachedData != null) {
+      // 有缓存数据，立即返回，同时异步刷新缓存
+      _refreshPlayRecordsInBackground(context);
       return cachedData;
     }
 
@@ -138,6 +123,8 @@ class PageCacheService {
     // 先检查缓存
     final cachedData = getCache<List<FavoriteItem>>(cacheKey);
     if (cachedData != null) {
+      // 有缓存数据，立即返回，同时异步刷新缓存
+      _refreshFavoritesInBackground(context);
       // 过滤掉 origin=live 的数据
       return cachedData.where((item) => item.origin != 'live').toList();
     }
@@ -374,5 +361,77 @@ class PageCacheService {
       // 更新缓存
       setCache(cacheKey, updatedRecords);
     }
+  }
+
+  /// 从缓存中删除指定的收藏项目
+  void removeFavoriteFromCache(String source, String id) {
+    const cacheKey = 'favorites';
+    final cachedData = getCache<List<FavoriteItem>>(cacheKey);
+    
+    if (cachedData != null) {
+      // 创建新的列表，排除要删除的收藏项目
+      final updatedFavorites = cachedData.where((favorite) => 
+        !(favorite.source == source && favorite.id == id)
+      ).toList();
+      
+      // 更新缓存
+      setCache(cacheKey, updatedFavorites);
+    }
+  }
+
+  /// 向缓存中添加收藏项目
+  void addFavoriteToCache(String source, String id, Map<String, dynamic> favoriteData) {
+    const cacheKey = 'favorites';
+    final cachedData = getCache<List<FavoriteItem>>(cacheKey);
+    
+    if (cachedData != null) {
+      // 检查是否已存在相同的收藏项目
+      final existingIndex = cachedData.indexWhere((favorite) => 
+        favorite.source == source && favorite.id == id
+      );
+      
+      if (existingIndex == -1) {
+        // 不存在，创建新的收藏项目并添加到列表开头
+        final newFavorite = FavoriteItem(
+          id: id,
+          source: source,
+          title: favoriteData['title'] ?? '',
+          sourceName: favoriteData['source_name'] ?? '',
+          year: favoriteData['year'] ?? '',
+          cover: favoriteData['cover'] ?? '',
+          totalEpisodes: favoriteData['total_episodes'] ?? 0,
+          saveTime: favoriteData['save_time'] ?? DateTime.now().millisecondsSinceEpoch,
+          origin: '', // 默认为空，表示非直播源
+        );
+        
+        // 添加到列表开头，保持按save_time降序排列
+        final updatedFavorites = [newFavorite, ...cachedData];
+        setCache(cacheKey, updatedFavorites);
+      }
+    }
+  }
+
+  /// 后台异步刷新播放记录
+  void _refreshPlayRecordsInBackground(BuildContext context) {
+    // 异步执行，不等待结果
+    Future.microtask(() async {
+      try {
+        await refreshPlayRecords(context);
+      } catch (e) {
+        // 静默处理错误，不影响主流程
+      }
+    });
+  }
+
+  /// 后台异步刷新收藏夹
+  void _refreshFavoritesInBackground(BuildContext context) {
+    // 异步执行，不等待结果
+    Future.microtask(() async {
+      try {
+        await refreshFavorites(context);
+      } catch (e) {
+        // 静默处理错误，不影响主流程
+      }
+    });
   }
 }

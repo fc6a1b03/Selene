@@ -13,20 +13,21 @@ import '../models/video_info.dart';
 import '../services/favorite_service.dart';
 import '../widgets/video_card.dart';
 import '../widgets/video_menu_bottom_sheet.dart';
+import '../widgets/favorites_grid.dart';
 
-class SearchContent extends StatefulWidget {
+class SearchScreen extends StatefulWidget {
   final Function(VideoInfo)? onVideoTap;
   
-  const SearchContent({
+  const SearchScreen({
     super.key,
     this.onVideoTap,
   });
 
   @override
-  State<SearchContent> createState() => _SearchContentState();
+  State<SearchScreen> createState() => _SearchScreenState();
 }
 
-class _SearchContentState extends State<SearchContent> {
+class _SearchScreenState extends State<SearchScreen> {
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
   String _searchQuery = '';
@@ -163,6 +164,16 @@ class _SearchContentState extends State<SearchContent> {
       }
     } catch (e) {
       // 错误处理，保持当前显示的内容
+    }
+  }
+
+  /// 异步刷新收藏夹数据
+  Future<void> _refreshFavorites() async {
+    try {
+      // 刷新收藏夹缓存数据
+      await PageCacheService().refreshFavorites(context);
+    } catch (e) {
+      // 错误处理，静默处理
     }
   }
 
@@ -755,37 +766,11 @@ class _SearchContentState extends State<SearchContent> {
         break;
       case VideoMenuAction.favorite:
         // 收藏
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              '收藏: ${videoInfo.title}',
-              style: GoogleFonts.poppins(color: Colors.white),
-            ),
-            backgroundColor: const Color(0xFFE74C3C),
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
-            margin: const EdgeInsets.all(16),
-          ),
-        );
+        _handleFavorite(videoInfo);
         break;
       case VideoMenuAction.unfavorite:
         // 取消收藏
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              '取消收藏: ${videoInfo.title}',
-              style: GoogleFonts.poppins(color: Colors.white),
-            ),
-            backgroundColor: const Color(0xFFE74C3C),
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
-            margin: const EdgeInsets.all(16),
-          ),
-        );
+        _handleUnfavorite(videoInfo);
         break;
       case VideoMenuAction.deleteRecord:
         // 搜索场景不支持删除记录
@@ -824,6 +809,133 @@ class _SearchContentState extends State<SearchContent> {
           ),
         );
         break;
+    }
+  }
+
+  /// 处理收藏
+  Future<void> _handleFavorite(VideoInfo videoInfo) async {
+    try {
+      // 构建收藏数据
+      final favoriteData = {
+        'cover': videoInfo.cover,
+        'save_time': DateTime.now().millisecondsSinceEpoch,
+        'source_name': videoInfo.sourceName,
+        'title': videoInfo.title,
+        'total_episodes': videoInfo.totalEpisodes,
+        'year': videoInfo.year,
+      };
+
+      // 立即添加到缓存
+      PageCacheService().addFavoriteToCache(videoInfo.source, videoInfo.id, favoriteData);
+      
+      // 调用API添加收藏
+      final response = await ApiService.favorite(videoInfo.source, videoInfo.id, favoriteData, context);
+
+      if (response.success) {
+        // 通知UI刷新收藏状态
+        if (mounted) {
+          setState(() {});
+        }
+      } else {
+        // API调用失败，显示错误提示
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                response.message ?? '收藏失败',
+                style: GoogleFonts.poppins(color: Colors.white),
+              ),
+              backgroundColor: const Color(0xFFe74c3c),
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              margin: const EdgeInsets.all(16),
+            ),
+          );
+        }
+        _refreshFavorites();
+      }
+    } catch (e) {
+      // 显示错误提示
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              '收藏失败: ${e.toString()}',
+              style: GoogleFonts.poppins(color: Colors.white),
+            ),
+            backgroundColor: const Color(0xFFe74c3c),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+            margin: const EdgeInsets.all(16),
+          ),
+        );
+      }
+      _refreshFavorites();
+    }
+  }
+
+  /// 处理取消收藏
+  Future<void> _handleUnfavorite(VideoInfo videoInfo) async {
+    try {
+      // 先立即从UI中移除该项目
+      FavoritesGrid.removeFavoriteFromUI(videoInfo.source, videoInfo.id);
+      
+      // 立即从缓存中移除该项目
+      PageCacheService().removeFavoriteFromCache(videoInfo.source, videoInfo.id);
+      
+      // 通知继续观看组件刷新收藏状态
+      if (mounted) {
+        setState(() {});
+      }
+      
+      // 调用API取消收藏
+      final response = await ApiService.unfavorite(videoInfo.source, videoInfo.id, context);
+
+      if (!response.success) {
+        // API调用失败，显示错误提示
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                response.message ?? '取消收藏失败',
+                style: GoogleFonts.poppins(color: Colors.white),
+              ),
+              backgroundColor: const Color(0xFFe74c3c),
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              margin: const EdgeInsets.all(16),
+            ),
+          );
+        }
+        // API失败时重新刷新缓存以恢复数据
+        _refreshFavorites();
+      }
+    } catch (e) {
+      // 显示错误提示
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              '取消收藏失败: ${e.toString()}',
+              style: GoogleFonts.poppins(color: Colors.white),
+            ),
+            backgroundColor: const Color(0xFFe74c3c),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+            margin: const EdgeInsets.all(16),
+          ),
+        );
+      }
+      // 异常时重新刷新缓存以恢复数据
+      _refreshFavorites();
     }
   }
 }

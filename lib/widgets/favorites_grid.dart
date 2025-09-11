@@ -27,6 +27,11 @@ class FavoritesGrid extends StatefulWidget {
   static Future<void> refreshFavorites() async {
     await _FavoritesGridState._currentInstance?._refreshDataInBackground();
   }
+
+  /// 静态方法：从UI中移除指定的收藏项目
+  static void removeFavoriteFromUI(String source, String id) {
+    _FavoritesGridState._currentInstance?.removeFavoriteFromUI(source, id);
+  }
 }
 
 class _FavoritesGridState extends State<FavoritesGrid>
@@ -197,6 +202,17 @@ class _FavoritesGridState extends State<FavoritesGrid>
       }
     }
     return true;
+  }
+
+  /// 从UI中移除指定的收藏项目（供外部调用）
+  void removeFavoriteFromUI(String source, String id) {
+    if (!mounted) return;
+    
+    setState(() {
+      _favorites.removeWhere((favorite) => 
+        favorite.source == source && favorite.id == id
+      );
+    });
   }
 
   Future<void> _loadFavorites() async {

@@ -404,6 +404,43 @@ class ApiService {
     }
   }
 
+  /// 添加收藏
+  static Future<ApiResponse<void>> favorite(String source, String id, Map<String, dynamic> favoriteData, BuildContext context) async {
+    try {
+      final key = '$source+$id';
+      final body = {
+        'key': key,
+        'favorite': favoriteData,
+      };
+      
+      final response = await post<void>(
+        '/api/favorites',
+        body: body,
+        context: context,
+      );
+      
+      return response;
+    } catch (e) {
+      return ApiResponse.error('收藏异常: ${e.toString()}');
+    }
+  }
+
+  /// 取消收藏
+  static Future<ApiResponse<void>> unfavorite(String source, String id, BuildContext context) async {
+    try {
+      final key = '$source+$id';
+      final encodedKey = Uri.encodeComponent(key);
+      final response = await delete<void>(
+        '/api/favorites?key=$encodedKey',
+        context: context,
+      );
+      
+      return response;
+    } catch (e) {
+      return ApiResponse.error('取消收藏异常: ${e.toString()}');
+    }
+  }
+
   /// 检查网络连接状态
   static Future<bool> checkConnection() async {
     try {

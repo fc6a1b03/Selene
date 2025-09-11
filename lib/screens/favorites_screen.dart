@@ -4,6 +4,8 @@ import '../widgets/favorites_grid.dart';
 import '../models/play_record.dart';
 import '../models/video_info.dart';
 import '../widgets/video_menu_bottom_sheet.dart';
+import '../services/api_service.dart';
+import '../services/page_cache_service.dart';
 
 /// 收藏夹页面
 class FavoritesScreen extends StatelessWidget {
@@ -80,20 +82,7 @@ class FavoritesScreen extends StatelessWidget {
                 );
                 break;
               case VideoMenuAction.unfavorite:
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      '取消收藏: ${videoInfo.title}',
-                      style: GoogleFonts.poppins(color: Colors.white),
-                    ),
-                    backgroundColor: const Color(0xFFE74C3C),
-                    behavior: SnackBarBehavior.floating,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    margin: const EdgeInsets.all(16),
-                  ),
-                );
+                _handleUnfavorite(context, videoInfo);
                 break;
               default:
                 break;
@@ -102,6 +91,75 @@ class FavoritesScreen extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  /// 处理取消收藏
+  Future<void> _handleUnfavorite(BuildContext context, VideoInfo videoInfo) async {
+    try {
+      // 先立即从UI中移除该项目
+      FavoritesGrid.removeFavoriteFromUI(videoInfo.source, videoInfo.id);
+      
+      // 立即从缓存中移除该项目
+      PageCacheService().removeFavoriteFromCache(videoInfo.source, videoInfo.id);
+      
+      // 调用API取消收藏
+      final response = await ApiService.unfavorite(videoInfo.source, videoInfo.id, context);
+
+      if (!response.success) {
+        // API调用失败，显示错误提示
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                response.message ?? '取消收藏失败',
+                style: GoogleFonts.poppins(color: Colors.white),
+              ),
+              backgroundColor: const Color(0xFFe74c3c),
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              margin: const EdgeInsets.all(16),
+            ),
+          );
+        }
+        // API失败时重新刷新缓存以恢复数据
+        _refreshFavorites(context);
+      }
+    } catch (e) {
+      // 显示错误提示
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              '取消收藏失败: ${e.toString()}',
+              style: GoogleFonts.poppins(color: Colors.white),
+            ),
+            backgroundColor: const Color(0xFFe74c3c),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+            margin: const EdgeInsets.all(16),
+          ),
+        );
+      }
+      // 异常时重新刷新缓存以恢复数据
+      _refreshFavorites(context);
+    }
+  }
+
+  /// 异步刷新收藏夹数据
+  Future<void> _refreshFavorites(BuildContext context) async {
+    try {
+      // 刷新收藏夹缓存数据
+      await PageCacheService().refreshFavorites(context);
+      
+      // 通知收藏夹组件刷新UI
+      FavoritesGrid.refreshFavorites();
+    } catch (e) {
+      // 错误处理，静默处理
+    }
   }
 }
 
