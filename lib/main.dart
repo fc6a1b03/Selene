@@ -94,42 +94,57 @@ class _AppWrapperState extends State<AppWrapper> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return Scaffold(
-        body: Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [
-                Color(0xFFe6f3fb),
-                Color(0xFFeaf3f7),
-                Color(0xFFf7f7f3),
-                Color(0xFFe9ecef),
-                Color(0xFFdbe3ea),
-                Color(0xFFd3dde6),
-              ],
-              stops: [0.0, 0.18, 0.38, 0.60, 0.80, 1.0],
-            ),
-          ),
-          child: const Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                CircularProgressIndicator(
-                  valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF2c3e50)),
+      return Consumer<ThemeService>(
+        builder: (context, themeService, child) {
+          return Scaffold(
+            body: Container(
+              decoration: BoxDecoration(
+                color: themeService.isDarkMode 
+                    ? const Color(0xFF000000) // 深色模式纯黑色
+                    : null,
+                gradient: themeService.isDarkMode 
+                    ? null
+                    : const LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Color(0xFFe6f3fb),
+                          Color(0xFFeaf3f7),
+                          Color(0xFFf7f7f3),
+                          Color(0xFFe9ecef),
+                          Color(0xFFdbe3ea),
+                          Color(0xFFd3dde6),
+                        ],
+                        stops: [0.0, 0.18, 0.38, 0.60, 0.80, 1.0],
+                      ),
+              ),
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    CircularProgressIndicator(
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        themeService.isDarkMode 
+                            ? const Color(0xFFffffff)
+                            : const Color(0xFF2c3e50)
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    Text(
+                      '正在检查登录状态...',
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: themeService.isDarkMode 
+                            ? const Color(0xFFffffff)
+                            : const Color(0xFF2c3e50),
+                      ),
+                    ),
+                  ],
                 ),
-                SizedBox(height: 24),
-                Text(
-                  '正在检查登录状态...',
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: Color(0xFF2c3e50),
-                  ),
-                ),
-              ],
+              ),
             ),
-          ),
-        ),
+          );
+        },
       );
     }
     
