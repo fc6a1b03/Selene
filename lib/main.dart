@@ -24,7 +24,7 @@ class SeleneApp extends StatelessWidget {
             debugShowCheckedModeBanner: false,
             theme: themeService.lightTheme,
             darkTheme: themeService.darkTheme,
-            themeMode: themeService.isDarkMode ? ThemeMode.dark : ThemeMode.light,
+            themeMode: themeService.themeMode,
             home: const AppWrapper(),
           );
         },

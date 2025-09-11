@@ -9,6 +9,7 @@ import '../widgets/main_layout.dart';
 import '../widgets/top_tab_switcher.dart';
 import '../widgets/favorites_grid.dart';
 import '../widgets/search_content.dart';
+import '../widgets/video_menu_bottom_sheet.dart';
 import '../models/play_record.dart';
 import '../models/video_info.dart';
 import 'movies_screen.dart';
@@ -65,26 +66,48 @@ class _HomeScreenState extends State<HomeScreen> {
                     // 继续观看组件
                     ContinueWatchingSection(
                       onVideoTap: _onVideoTap,
+                      onGlobalMenuAction: _onGlobalMenuAction,
                     ),
                     // 热门电影组件
                     HotMoviesSection(
                       onMovieTap: _onVideoTap,
                       onMoreTap: () => _onBottomNavChanged(1), // 切换到电影页面
+                      onGlobalMenuAction: (videoInfo, action) => _onGlobalMenuActionFromVideoInfo(videoInfo, action),
                     ),
                     // 热门剧集组件
                     HotTvSection(
                       onTvTap: _onVideoTap,
                       onMoreTap: () => _onBottomNavChanged(2), // 切换到剧集页面
+                      onGlobalMenuAction: (videoInfo, action) => _onGlobalMenuActionFromVideoInfo(videoInfo, action),
                     ),
                     // 新番放送组件
                     BangumiSection(
                       onBangumiTap: _onVideoTap,
                       onMoreTap: () => _onBottomNavChanged(3), // 切换到动漫页面
+                      onGlobalMenuAction: (videoInfo, action) {
+                        // 转换为PlayRecord用于处理
+                        final playRecord = PlayRecord(
+                          id: videoInfo.id,
+                          source: videoInfo.source,
+                          title: videoInfo.title,
+                          sourceName: videoInfo.sourceName,
+                          year: videoInfo.year,
+                          cover: videoInfo.cover,
+                          index: videoInfo.index,
+                          totalEpisodes: videoInfo.totalEpisodes,
+                          playTime: videoInfo.playTime,
+                          totalTime: videoInfo.totalTime,
+                          saveTime: videoInfo.saveTime,
+                          searchTitle: videoInfo.searchTitle,
+                        );
+                        _onGlobalMenuAction(playRecord, action);
+                      },
                     ),
                     // 热门综艺组件
                     HotShowSection(
                       onShowTap: _onVideoTap,
                       onMoreTap: () => _onBottomNavChanged(4), // 切换到综艺页面
+                      onGlobalMenuAction: (videoInfo, action) => _onGlobalMenuActionFromVideoInfo(videoInfo, action),
                     ),
                   ],
                 )
@@ -93,6 +116,24 @@ class _HomeScreenState extends State<HomeScreen> {
                     const SizedBox(height: 4), // 收藏夹内容更靠近切换按钮
                     FavoritesGrid(
                       onVideoTap: _onVideoTap,
+                      onGlobalMenuAction: (VideoInfo videoInfo, VideoMenuAction action) {
+                        // 将VideoInfo转换为PlayRecord用于统一处理
+                        final playRecord = PlayRecord(
+                          id: videoInfo.id,
+                          source: videoInfo.source,
+                          title: videoInfo.title,
+                          sourceName: videoInfo.sourceName,
+                          year: videoInfo.year,
+                          cover: videoInfo.cover,
+                          index: videoInfo.index,
+                          totalEpisodes: videoInfo.totalEpisodes,
+                          playTime: videoInfo.playTime,
+                          totalTime: videoInfo.totalTime,
+                          saveTime: videoInfo.saveTime,
+                          searchTitle: videoInfo.searchTitle,
+                        );
+                        _onGlobalMenuAction(playRecord, action);
+                      },
                     ),
                   ],
                 ),
@@ -176,6 +217,134 @@ class _HomeScreenState extends State<HomeScreen> {
         margin: const EdgeInsets.all(16),
       ),
     );
+  }
+
+  /// 处理来自VideoInfo的全局菜单操作
+  void _onGlobalMenuActionFromVideoInfo(VideoInfo videoInfo, VideoMenuAction action) {
+    // 将VideoInfo转换为PlayRecord用于统一处理
+    final playRecord = PlayRecord(
+      id: videoInfo.id,
+      source: videoInfo.source,
+      title: videoInfo.title,
+      sourceName: videoInfo.sourceName,
+      year: videoInfo.year,
+      cover: videoInfo.cover,
+      index: videoInfo.index,
+      totalEpisodes: videoInfo.totalEpisodes,
+      playTime: videoInfo.playTime,
+      totalTime: videoInfo.totalTime,
+      saveTime: videoInfo.saveTime,
+      searchTitle: videoInfo.searchTitle,
+    );
+    _onGlobalMenuAction(playRecord, action);
+  }
+
+  /// 处理视频菜单操作
+  void _onGlobalMenuAction(PlayRecord playRecord, VideoMenuAction action) {
+    switch (action) {
+      case VideoMenuAction.play:
+        // 播放视频
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              '播放: ${playRecord.title}',
+              style: GoogleFonts.poppins(color: Colors.white),
+            ),
+            backgroundColor: const Color(0xFF27AE60),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+            margin: const EdgeInsets.all(16),
+          ),
+        );
+        break;
+      case VideoMenuAction.favorite:
+        // 收藏
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              '收藏: ${playRecord.title}',
+              style: GoogleFonts.poppins(color: Colors.white),
+            ),
+            backgroundColor: const Color(0xFFE74C3C),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+            margin: const EdgeInsets.all(16),
+          ),
+        );
+        break;
+      case VideoMenuAction.unfavorite:
+        // 取消收藏
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              '取消收藏: ${playRecord.title}',
+              style: GoogleFonts.poppins(color: Colors.white),
+            ),
+            backgroundColor: const Color(0xFFE74C3C),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+            margin: const EdgeInsets.all(16),
+          ),
+        );
+        break;
+      case VideoMenuAction.deleteRecord:
+        // 删除记录
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              '删除记录: ${playRecord.title}',
+              style: GoogleFonts.poppins(color: Colors.white),
+            ),
+            backgroundColor: const Color(0xFFE74C3C),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+            margin: const EdgeInsets.all(16),
+          ),
+        );
+        break;
+      case VideoMenuAction.doubanDetail:
+        // 豆瓣详情 - 已在组件内部处理URL跳转
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              '正在打开豆瓣详情: ${playRecord.title}',
+              style: GoogleFonts.poppins(color: Colors.white),
+            ),
+            backgroundColor: const Color(0xFF3498DB),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+            margin: const EdgeInsets.all(16),
+          ),
+        );
+        break;
+      case VideoMenuAction.bangumiDetail:
+        // Bangumi详情 - 已在组件内部处理URL跳转
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              '正在打开 Bangumi 详情: ${playRecord.title}',
+              style: GoogleFonts.poppins(color: Colors.white),
+            ),
+            backgroundColor: const Color(0xFF3498DB),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+            margin: const EdgeInsets.all(16),
+          ),
+        );
+        break;
+    }
   }
 
   /// 处理搜索结果视频卡片点击

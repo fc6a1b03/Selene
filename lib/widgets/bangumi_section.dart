@@ -4,16 +4,19 @@ import '../models/play_record.dart';
 import '../models/video_info.dart';
 import '../services/page_cache_service.dart';
 import 'recommendation_section.dart';
+import 'video_menu_bottom_sheet.dart';
 
 /// 新番放送组件
 class BangumiSection extends StatefulWidget {
   final Function(PlayRecord)? onBangumiTap;
   final VoidCallback? onMoreTap;
+  final Function(VideoInfo, VideoMenuAction)? onGlobalMenuAction; // 全局菜单操作回调
 
   const BangumiSection({
     super.key,
     this.onBangumiTap,
     this.onMoreTap,
+    this.onGlobalMenuAction,
   });
 
   @override
@@ -105,6 +108,7 @@ class _BangumiSectionState extends State<BangumiSection> {
         );
         widget.onBangumiTap?.call(playRecord);
       },
+      onGlobalMenuAction: widget.onGlobalMenuAction,
       isLoading: _isLoading,
       hasError: _hasError,
       onRetry: _loadBangumiCalendar,

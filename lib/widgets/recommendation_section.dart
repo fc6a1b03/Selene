@@ -6,6 +6,7 @@ import '../models/play_record.dart';
 import '../models/video_info.dart';
 import '../services/theme_service.dart';
 import 'video_card.dart';
+import 'video_menu_bottom_sheet.dart';
 
 /// 推荐信息模块组件
 class RecommendationSection extends StatelessWidget {
@@ -16,6 +17,7 @@ class RecommendationSection extends StatelessWidget {
   final List<PlayRecord>? items; // 数据列表（向后兼容）
   final Function(VideoInfo)? onItemTap; // 项目点击回调
   final Function(PlayRecord)? onPlayRecordTap; // PlayRecord点击回调（向后兼容）
+  final Function(VideoInfo, VideoMenuAction)? onGlobalMenuAction; // 全局菜单操作回调
   final bool isLoading; // 是否加载中
   final bool hasError; // 是否有错误
   final VoidCallback? onRetry; // 重试回调
@@ -31,6 +33,7 @@ class RecommendationSection extends StatelessWidget {
     this.items,
     this.onItemTap,
     this.onPlayRecordTap,
+    this.onGlobalMenuAction,
     this.isLoading = false,
     this.hasError = false,
     this.onRetry,
@@ -138,6 +141,8 @@ class RecommendationSection extends StatelessWidget {
                     onTap: () => onItemTap?.call(videoInfo),
                     from: videoInfo.source == 'douban' ? 'douban' : (videoInfo.source == 'bangumi' ? 'bangumi' : 'playrecord'),
                     cardWidth: cardWidth,
+                    onGlobalMenuAction: onGlobalMenuAction != null ? (action) => onGlobalMenuAction!(videoInfo, action) : null,
+                    isFavorited: false, // 推荐页面默认未收藏
                   ),
                 );
               } else {
@@ -158,6 +163,8 @@ class RecommendationSection extends StatelessWidget {
                     onTap: () => onPlayRecordTap?.call(item),
                     from: item.source == 'douban' ? 'douban' : (item.source == 'bangumi' ? 'bangumi' : 'playrecord'),
                     cardWidth: cardWidth,
+                    onGlobalMenuAction: onGlobalMenuAction != null ? (action) => onGlobalMenuAction!(videoInfo, action) : null,
+                    isFavorited: false, // 推荐页面默认未收藏
                   ),
                 );
               }

@@ -8,13 +8,16 @@ import '../models/play_record.dart';
 import '../models/video_info.dart';
 import '../services/page_cache_service.dart';
 import '../services/theme_service.dart';
+import 'video_menu_bottom_sheet.dart';
 
 class FavoritesGrid extends StatefulWidget {
   final Function(PlayRecord) onVideoTap;
+  final Function(VideoInfo, VideoMenuAction)? onGlobalMenuAction;
 
   const FavoritesGrid({
     super.key,
     required this.onVideoTap,
+    this.onGlobalMenuAction,
   });
 
   @override
@@ -232,7 +235,7 @@ class _FavoritesGridState extends State<FavoritesGrid>
         year: favorite.year,
         sourceName: favorite.sourceName,
         totalEpisodes: favorite.totalEpisodes,
-        index: 1, // 默认从第1集开始
+        index: 0, // 0表示没有播放记录
         playTime: 0, // 未播放
         totalTime: 0, // 未知总时长
         saveTime: favorite.saveTime,
@@ -494,16 +497,13 @@ class _FavoritesGridState extends State<FavoritesGrid>
               final favorite = _favorites[index];
               final playRecord = _favoriteToPlayRecord(favorite);
               
-              // 检查是否有匹配的播放记录
-              final hasPlayRecord = _playRecords.any(
-                (record) => record.source == favorite.source && record.id == favorite.id,
-              );
-              
               return VideoCard(
                 videoInfo: VideoInfo.fromPlayRecord(playRecord),
                 onTap: () => widget.onVideoTap(playRecord),
-                from: hasPlayRecord ? 'playrecord' : 'favorite',
+                from: 'favorite', // 统一设置为收藏场景
                 cardWidth: itemWidth, // 传递计算出的宽度
+                onGlobalMenuAction: widget.onGlobalMenuAction != null ? (action) => widget.onGlobalMenuAction!(VideoInfo.fromPlayRecord(playRecord), action) : null,
+                isFavorited: true, // 收藏页面默认已收藏
               );
             },
           );

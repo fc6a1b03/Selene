@@ -4,16 +4,19 @@ import '../models/play_record.dart';
 import '../models/video_info.dart';
 import '../services/page_cache_service.dart';
 import 'recommendation_section.dart';
+import 'video_menu_bottom_sheet.dart';
 
 /// 热门电影组件
 class HotMoviesSection extends StatefulWidget {
   final Function(PlayRecord)? onMovieTap;
   final VoidCallback? onMoreTap;
+  final Function(VideoInfo, VideoMenuAction)? onGlobalMenuAction;
 
   const HotMoviesSection({
     super.key,
     this.onMovieTap,
     this.onMoreTap,
+    this.onGlobalMenuAction,
   });
 
   @override
@@ -93,6 +96,7 @@ class _HotMoviesSectionState extends State<HotMoviesSection> {
         );
         widget.onMovieTap?.call(playRecord);
       },
+      onGlobalMenuAction: widget.onGlobalMenuAction,
       isLoading: _isLoading,
       hasError: _hasError,
       onRetry: _loadHotMovies,

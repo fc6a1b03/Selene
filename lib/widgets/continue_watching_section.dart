@@ -7,17 +7,21 @@ import '../models/video_info.dart';
 import '../services/api_service.dart';
 import '../services/page_cache_service.dart';
 import '../services/theme_service.dart';
+import '../services/favorite_service.dart';
 import 'video_card.dart';
+import 'video_menu_bottom_sheet.dart';
 
 /// 继续观看组件
 class ContinueWatchingSection extends StatefulWidget {
   final Function(PlayRecord)? onVideoTap;
   final VoidCallback? onClear;
+  final Function(PlayRecord, VideoMenuAction)? onGlobalMenuAction;
 
   const ContinueWatchingSection({
     super.key,
     this.onVideoTap,
     this.onClear,
+    this.onGlobalMenuAction,
   });
 
   @override
@@ -32,6 +36,7 @@ class _ContinueWatchingSectionState extends State<ContinueWatchingSection>
   late AnimationController _shimmerController;
   late Animation<double> _shimmerAnimation;
   final PageCacheService _cacheService = PageCacheService();
+  final FavoriteService _favoriteService = FavoriteService();
 
   @override
   void initState() {
@@ -124,6 +129,7 @@ class _ContinueWatchingSectionState extends State<ContinueWatchingSection>
       }
     }
   }
+
 
   /// 后台刷新数据
   Future<void> _refreshDataInBackground() async {
@@ -475,6 +481,8 @@ class _ContinueWatchingSectionState extends State<ContinueWatchingSection>
                           onTap: () => widget.onVideoTap?.call(playRecord),
                           from: 'playrecord',
                           cardWidth: cardWidth, // 使用动态计算的宽度
+                          onGlobalMenuAction: (action) => widget.onGlobalMenuAction?.call(playRecord, action),
+                          isFavorited: _favoriteService.isFavoritedSync(playRecord), // 同步检测收藏状态
                         ),
                       );
                     },
@@ -645,4 +653,5 @@ class _ContinueWatchingSectionState extends State<ContinueWatchingSection>
       ),
     );
   }
+
 }

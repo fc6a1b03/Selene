@@ -102,6 +102,7 @@ class DoubanMovie {
       rate: rate,
     );
   }
+
 }
 
 /// 豆瓣API响应模型

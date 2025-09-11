@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../widgets/favorites_grid.dart';
 import '../models/play_record.dart';
+import '../models/video_info.dart';
+import '../widgets/video_menu_bottom_sheet.dart';
 
 /// 收藏夹页面
 class FavoritesScreen extends StatelessWidget {
@@ -58,6 +60,44 @@ class FavoritesScreen extends StatelessWidget {
                 margin: const EdgeInsets.all(16),
               ),
             );
+          },
+          onGlobalMenuAction: (VideoInfo videoInfo, VideoMenuAction action) {
+            switch (action) {
+              case VideoMenuAction.play:
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      '播放: ${videoInfo.title}',
+                      style: GoogleFonts.poppins(color: Colors.white),
+                    ),
+                    backgroundColor: const Color(0xFF27AE60),
+                    behavior: SnackBarBehavior.floating,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    margin: const EdgeInsets.all(16),
+                  ),
+                );
+                break;
+              case VideoMenuAction.unfavorite:
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      '取消收藏: ${videoInfo.title}',
+                      style: GoogleFonts.poppins(color: Colors.white),
+                    ),
+                    backgroundColor: const Color(0xFFE74C3C),
+                    behavior: SnackBarBehavior.floating,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    margin: const EdgeInsets.all(16),
+                  ),
+                );
+                break;
+              default:
+                break;
+            }
           },
         ),
       ),

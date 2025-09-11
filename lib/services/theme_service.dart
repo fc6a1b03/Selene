@@ -1,27 +1,45 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 class ThemeService extends ChangeNotifier {
-  static const String _themeKey = 'is_dark_mode';
-  bool _isDarkMode = false;
+  ThemeMode _themeMode = ThemeMode.system;
 
-  bool get isDarkMode => _isDarkMode;
+  ThemeMode get themeMode => _themeMode;
+  bool get isDarkMode => _themeMode == ThemeMode.dark;
 
   ThemeService() {
     _loadTheme();
   }
 
   void _loadTheme() async {
-    final prefs = await SharedPreferences.getInstance();
-    _isDarkMode = prefs.getBool(_themeKey) ?? false;
+    // 每次启动都默认跟随系统主题，不保存用户的手动选择
+    _themeMode = ThemeMode.system;
     notifyListeners();
   }
 
-  void toggleTheme() async {
-    _isDarkMode = !_isDarkMode;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_themeKey, _isDarkMode);
+  void setThemeMode(ThemeMode mode) async {
+    _themeMode = mode;
+    // 不再保存到 SharedPreferences，每次启动都重新遵循系统主题
     notifyListeners();
+  }
+
+  void toggleTheme(BuildContext context) async {
+    switch (_themeMode) {
+      case ThemeMode.light:
+        setThemeMode(ThemeMode.dark);
+        break;
+      case ThemeMode.dark:
+        setThemeMode(ThemeMode.light);
+        break;
+      case ThemeMode.system:
+        // 当为系统模式时，检测当前系统主题并切换到相反模式
+        final brightness = MediaQuery.of(context).platformBrightness;
+        if (brightness == Brightness.light) {
+          setThemeMode(ThemeMode.dark);
+        } else {
+          setThemeMode(ThemeMode.light);
+        }
+        break;
+    }
   }
 
   ThemeData get lightTheme => ThemeData(

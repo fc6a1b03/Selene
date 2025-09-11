@@ -179,7 +179,7 @@ class _MainLayoutState extends State<MainLayout> {
                       child: InkWell(
                         borderRadius: BorderRadius.circular(24),
                         onTap: () {
-                          themeService.toggleTheme();
+                          themeService.toggleTheme(context);
                         },
                         child: Center(
                           child: AnimatedSwitcher(

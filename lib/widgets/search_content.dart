@@ -10,7 +10,9 @@ import '../services/theme_service.dart';
 import '../services/sse_search_service.dart';
 import '../models/search_result.dart';
 import '../models/video_info.dart';
+import '../services/favorite_service.dart';
 import '../widgets/video_card.dart';
+import '../widgets/video_menu_bottom_sheet.dart';
 
 class SearchContent extends StatefulWidget {
   final Function(VideoInfo)? onVideoTap;
@@ -93,12 +95,17 @@ class _SearchContentState extends State<SearchContent> {
         // 将增量结果添加到现有结果列表中
         _searchResults.addAll(incrementalResults);
         
-        // 使用防抖机制，避免过于频繁的UI更新
+        // 使用防抖机制，避免过于频繁的UI更新，同时确保用户交互不受影响
         _updateTimer?.cancel();
-        _updateTimer = Timer(const Duration(milliseconds: 100), () {
+        _updateTimer = Timer(const Duration(milliseconds: 50), () {
           if (mounted) {
-            setState(() {
-              // 触发UI更新
+            // 使用 scheduleMicrotask 确保UI更新在下一个微任务中执行，不阻塞用户交互
+            scheduleMicrotask(() {
+              if (mounted) {
+                setState(() {
+                  // 触发UI更新
+                });
+              }
             });
           }
         });
@@ -723,6 +730,7 @@ class _SearchContentState extends State<SearchContent> {
           results: _searchResults,
           themeService: themeService,
           onVideoTap: widget.onVideoTap,
+          onGlobalMenuAction: _onGlobalMenuAction,
           hasReceivedStart: _hasReceivedStart,
         ),
       ],
@@ -735,6 +743,89 @@ class _SearchContentState extends State<SearchContent> {
     }
     return '0/0';
   }
+
+  /// 处理视频菜单操作
+  void _onGlobalMenuAction(VideoInfo videoInfo, VideoMenuAction action) {
+    switch (action) {
+      case VideoMenuAction.play:
+        // 播放视频
+        if (widget.onVideoTap != null) {
+          widget.onVideoTap!(videoInfo);
+        }
+        break;
+      case VideoMenuAction.favorite:
+        // 收藏
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              '收藏: ${videoInfo.title}',
+              style: GoogleFonts.poppins(color: Colors.white),
+            ),
+            backgroundColor: const Color(0xFFE74C3C),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+            margin: const EdgeInsets.all(16),
+          ),
+        );
+        break;
+      case VideoMenuAction.unfavorite:
+        // 取消收藏
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              '取消收藏: ${videoInfo.title}',
+              style: GoogleFonts.poppins(color: Colors.white),
+            ),
+            backgroundColor: const Color(0xFFE74C3C),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+            margin: const EdgeInsets.all(16),
+          ),
+        );
+        break;
+      case VideoMenuAction.deleteRecord:
+        // 搜索场景不支持删除记录
+        break;
+      case VideoMenuAction.doubanDetail:
+        // 豆瓣详情 - 已在组件内部处理URL跳转
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              '正在打开豆瓣详情: ${videoInfo.title}',
+              style: GoogleFonts.poppins(color: Colors.white),
+            ),
+            backgroundColor: const Color(0xFF3498DB),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+            margin: const EdgeInsets.all(16),
+          ),
+        );
+        break;
+      case VideoMenuAction.bangumiDetail:
+        // Bangumi详情 - 已在组件内部处理URL跳转
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              '正在打开 Bangumi 详情: ${videoInfo.title}',
+              style: GoogleFonts.poppins(color: Colors.white),
+            ),
+            backgroundColor: const Color(0xFF3498DB),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+            margin: const EdgeInsets.all(16),
+          ),
+        );
+        break;
+    }
+  }
 }
 
 /// 搜索结果网格组件
@@ -742,6 +833,7 @@ class _SearchResultsGrid extends StatefulWidget {
   final List<SearchResult> results;
   final ThemeService themeService;
   final Function(VideoInfo)? onVideoTap;
+  final Function(VideoInfo, VideoMenuAction)? onGlobalMenuAction;
   final bool hasReceivedStart;
 
   const _SearchResultsGrid({
@@ -749,6 +841,7 @@ class _SearchResultsGrid extends StatefulWidget {
     required this.results,
     required this.themeService,
     this.onVideoTap,
+    this.onGlobalMenuAction,
     required this.hasReceivedStart,
   });
 
@@ -757,6 +850,8 @@ class _SearchResultsGrid extends StatefulWidget {
 }
 
 class _SearchResultsGridState extends State<_SearchResultsGrid> with AutomaticKeepAliveClientMixin {
+  final FavoriteService _favoriteService = FavoriteService();
+  
   @override
   bool get wantKeepAlive => true;
 
@@ -809,6 +904,8 @@ class _SearchResultsGridState extends State<_SearchResultsGrid> with AutomaticKe
                 onTap: widget.onVideoTap != null ? () => widget.onVideoTap!(videoInfo) : null,
                 from: 'search',
                 cardWidth: itemWidth, // 传递计算出的宽度
+                onGlobalMenuAction: widget.onGlobalMenuAction != null ? (action) => widget.onGlobalMenuAction!(videoInfo, action) : null,
+                isFavorited: _favoriteService.isFavoritedSyncByVideoInfo(videoInfo), // 同步检查收藏状态
               ),
             );
           },

@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../models/video_info.dart';
 import '../services/theme_service.dart';
+import 'video_menu_bottom_sheet.dart';
 
 /// 视频卡片组件
 class VideoCard extends StatelessWidget {
@@ -10,6 +12,8 @@ class VideoCard extends StatelessWidget {
   final VoidCallback? onTap;
   final String from; // 场景值：'favorite', 'playrecord', 'search'
   final double? cardWidth; // 卡片宽度，用于响应式布局
+  final Function(VideoMenuAction)? onGlobalMenuAction; // 视频菜单操作回调
+  final bool isFavorited; // 是否已收藏
 
   const VideoCard({
     super.key,
@@ -17,6 +21,8 @@ class VideoCard extends StatelessWidget {
     this.onTap,
     this.from = 'playrecord',
     this.cardWidth,
+    this.onGlobalMenuAction,
+    this.isFavorited = false,
   });
 
   @override
@@ -34,10 +40,19 @@ class VideoCard extends StatelessWidget {
         final String imageUrl = _getImageUrl(videoInfo.cover, videoInfo.source);
         
         return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: width,
-        child: Column(
+          onTap: onTap,
+          onLongPress: (from == 'playrecord' || from == 'douban' || from == 'bangumi' || from == 'favorite' || from == 'search') ? () {
+            _showGlobalMenu(context);
+          } : null,
+          // 优化长按响应
+          onLongPressStart: (from == 'playrecord' || from == 'douban' || from == 'bangumi' || from == 'favorite' || from == 'search') ? (_) {
+            // 长按开始时的视觉反馈
+          } : null,
+          // 设置手势行为，确保长按优先级
+          behavior: HitTestBehavior.opaque,
+          child: SizedBox(
+          width: width,
+          child: Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -52,44 +67,35 @@ class VideoCard extends StatelessWidget {
                     borderRadius: BorderRadius.circular(8),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
+                        color: Colors.black.withValues(alpha: 0.1),
                         blurRadius: 4,
                         offset: const Offset(0, 2),
                       ),
                     ],
                   ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: Image.network(
-                      imageUrl,
-                      fit: BoxFit.cover,
-                      // 添加缓存配置
-                      cacheWidth: (width * MediaQuery.of(context).devicePixelRatio).round(),
-                      cacheHeight: (height * MediaQuery.of(context).devicePixelRatio).round(),
-                      // 优化加载性能
-                      frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
-                        if (wasSynchronouslyLoaded) return child;
-                        if (frame == null) {
-                          // 图片未加载完成时显示占位符
-                          return Container(
-                            width: width,
-                            height: height,
-                            decoration: BoxDecoration(
-                              color: themeService.isDarkMode 
-                                  ? const Color(0xFF333333)
-                                  : Colors.grey[300],
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                          );
-                        }
-                        return AnimatedOpacity(
-                          opacity: 1,
-                          duration: const Duration(milliseconds: 200),
-                          child: child,
-                        );
-                      },
-                      errorBuilder: (context, error, stackTrace) {
-                        return Container(
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: CachedNetworkImage(
+                        imageUrl: imageUrl,
+                        fit: BoxFit.cover,
+                        // 使用图片URL作为缓存key
+                        cacheKey: imageUrl,
+                        // 添加缓存配置
+                        memCacheWidth: (width * MediaQuery.of(context).devicePixelRatio).round(),
+                        memCacheHeight: (height * MediaQuery.of(context).devicePixelRatio).round(),
+                        // 占位符
+                        placeholder: (context, url) => Container(
+                          width: width,
+                          height: height,
+                          decoration: BoxDecoration(
+                            color: themeService.isDarkMode 
+                                ? const Color(0xFF333333)
+                                : Colors.grey[300],
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        // 错误占位符
+                        errorWidget: (context, url, error) => Container(
                           color: themeService.isDarkMode 
                               ? const Color(0xFF333333)
                               : Colors.grey[300],
@@ -100,23 +106,12 @@ class VideoCard extends StatelessWidget {
                                 : Colors.grey,
                             size: 40,
                           ),
-                        );
-                      },
-                      loadingBuilder: (context, child, loadingProgress) {
-                        if (loadingProgress == null) return child;
-                        return Container(
-                          width: width,
-                          height: height,
-                          decoration: BoxDecoration(
-                            color: themeService.isDarkMode 
-                                ? const Color(0xFF333333)
-                                : Colors.grey[300],
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                        );
-                      },
+                        ),
+                        // 图片淡入动画
+                        fadeInDuration: const Duration(milliseconds: 200),
+                        fadeOutDuration: const Duration(milliseconds: 100),
+                      ),
                     ),
-                  ),
                 ),
                 // 年份徽章（搜索模式）
                 if (from == 'search' && videoInfo.year.isNotEmpty)
@@ -126,7 +121,7 @@ class VideoCard extends StatelessWidget {
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF2c3e50).withOpacity(0.8),
+                        color: const Color(0xFF2c3e50).withValues(alpha: 0.8),
                         borderRadius: BorderRadius.circular(5),
                       ),
                       child: Text(
@@ -140,7 +135,7 @@ class VideoCard extends StatelessWidget {
                     ),
                   ),
                 // 集数指示器或评分指示器
-                if ((from == 'douban' || from == 'bangumi') && videoInfo.rate != null && videoInfo.rate!.isNotEmpty)
+                if ((from == 'douban' || from == 'bangumi') && _shouldShowRating())
                   Positioned(
                     top: 4,
                     right: 4,
@@ -192,7 +187,7 @@ class VideoCard extends StatelessWidget {
                     child: Container(
                       height: 3,
                       decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.3),
+                        color: Colors.black.withValues(alpha: 0.3),
                         borderRadius: const BorderRadius.only(
                           bottomLeft: Radius.circular(8),
                           bottomRight: Radius.circular(8),
@@ -303,7 +298,10 @@ class VideoCard extends StatelessWidget {
   String _getEpisodeText() {
     switch (from) {
       case 'favorite':
-        return '${videoInfo.totalEpisodes}'; // 收藏夹只显示总集数
+        // 收藏夹：如果有播放记录（index > 0）显示 x/y，否则只显示总集数
+        return videoInfo.index > 0 
+            ? '${videoInfo.index}/${videoInfo.totalEpisodes}'
+            : '${videoInfo.totalEpisodes}';
       case 'playrecord':
         return '${videoInfo.index}/${videoInfo.totalEpisodes}'; // 播放记录显示当前/总集数
       case 'search':
@@ -340,5 +338,35 @@ class VideoCard extends StatelessWidget {
       );
     }
     return originalUrl;
+  }
+
+  /// 判断是否应该显示评分
+  bool _shouldShowRating() {
+    // 评分为空或null时不显示
+    if (videoInfo.rate == null || videoInfo.rate!.isEmpty) {
+      return false;
+    }
+    
+    // 尝试解析评分为数字，如果为0或解析失败则不显示
+    try {
+      final rating = double.parse(videoInfo.rate!);
+      return rating > 0;
+    } catch (e) {
+      // 如果评分不是数字格式，则不显示
+      return false;
+    }
+  }
+
+  /// 显示视频菜单
+  void _showGlobalMenu(BuildContext context) {
+    if (onGlobalMenuAction != null) {
+      VideoMenuBottomSheet.show(
+        context,
+        videoInfo: videoInfo,
+        isFavorited: isFavorited,
+        onActionSelected: onGlobalMenuAction!,
+        from: from,
+      );
+    }
   }
 }

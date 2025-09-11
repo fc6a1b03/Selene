@@ -1,6 +1,54 @@
 import 'play_record.dart';
 import 'video_info.dart';
 
+/// HTML 实体解码工具函数
+String _decodeHtmlEntities(String text) {
+  if (text.isEmpty) return text;
+  
+  // 常见的 HTML 实体映射
+  final Map<String, String> htmlEntities = {
+    '&amp;': '&',
+    '&lt;': '<',
+    '&gt;': '>',
+    '&quot;': '"',
+    '&#39;': "'",
+    '&apos;': "'",
+    '&nbsp;': ' ',
+    '&copy;': '©',
+    '&reg;': '®',
+    '&trade;': '™',
+    '&hellip;': '…',
+    '&mdash;': '—',
+    '&ndash;': '–',
+    '&lsquo;': ''',
+    '&rsquo;': ''',
+    '&ldquo;': '"',
+    '&rdquo;': '"',
+    '&bull;': '•',
+    '&middot;': '·',
+  };
+  
+  String result = text;
+  
+  // 处理命名实体
+  htmlEntities.forEach((entity, replacement) {
+    result = result.replaceAll(entity, replacement);
+  });
+  
+  // 处理数字实体 (如 &#123; 或 &#x1A;)
+  result = result.replaceAllMapped(
+    RegExp(r'&#(\d+);'),
+    (match) => String.fromCharCode(int.parse(match.group(1)!))
+  );
+  
+  result = result.replaceAllMapped(
+    RegExp(r'&#x([0-9a-fA-F]+);'),
+    (match) => String.fromCharCode(int.parse(match.group(1)!, radix: 16))
+  );
+  
+  return result;
+}
+
 /// Bangumi 评分数据模型
 class BangumiRating {
   final int total;
@@ -139,9 +187,11 @@ class BangumiItem {
       id: json['id'] ?? 0,
       url: json['url']?.toString() ?? '',
       type: json['type'] ?? 0,
-      name: json['name']?.toString() ?? '',
-      nameCn: json['name_cn']?.toString(),
-      summary: json['summary']?.toString() ?? '',
+      name: _decodeHtmlEntities(json['name']?.toString() ?? ''),
+      nameCn: json['name_cn']?.toString() != null 
+          ? _decodeHtmlEntities(json['name_cn']!.toString())
+          : null,
+      summary: _decodeHtmlEntities(json['summary']?.toString() ?? ''),
       airDate: json['air_date']?.toString() ?? '',
       airWeekday: json['air_weekday'] ?? 0,
       rating: BangumiRating.fromJson(json['rating'] ?? {}),
@@ -188,6 +238,7 @@ class BangumiItem {
       rate: rating.score > 0 ? rating.score.toStringAsFixed(1) : null,
     );
   }
+
 }
 
 /// Bangumi 日历响应数据模型

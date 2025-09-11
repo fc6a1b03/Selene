@@ -3,17 +3,20 @@ import '../models/douban_movie.dart';
 import '../models/play_record.dart';
 import '../models/video_info.dart';
 import '../services/page_cache_service.dart';
+import '../widgets/video_menu_bottom_sheet.dart';
 import 'recommendation_section.dart';
 
 /// 热门剧集组件
 class HotTvSection extends StatefulWidget {
   final Function(PlayRecord)? onTvTap;
   final VoidCallback? onMoreTap;
+  final Function(VideoInfo, VideoMenuAction)? onGlobalMenuAction;
 
   const HotTvSection({
     super.key,
     this.onTvTap,
     this.onMoreTap,
+    this.onGlobalMenuAction,
   });
 
   @override
@@ -92,6 +95,7 @@ class _HotTvSectionState extends State<HotTvSection> {
         );
         widget.onTvTap?.call(playRecord);
       },
+      onGlobalMenuAction: widget.onGlobalMenuAction,
       isLoading: _isLoading,
       hasError: _hasError,
       onRetry: _loadHotTvShows,

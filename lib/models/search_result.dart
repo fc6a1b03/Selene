@@ -101,6 +101,7 @@ class SearchResult {
       totalTime: 0, // 搜索结果默认未知总时长
       saveTime: DateTime.now().millisecondsSinceEpoch ~/ 1000, // 当前时间戳
       searchTitle: title, // 使用标题作为搜索标题
+      doubanId: doubanId?.toString(), // 传递豆瓣ID，转换为字符串
     );
   }
 }
