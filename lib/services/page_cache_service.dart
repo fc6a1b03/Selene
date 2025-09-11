@@ -309,6 +309,8 @@ class PageCacheService {
     // 先检查缓存
     final cachedData = getCache<List<String>>(cacheKey);
     if (cachedData != null) {
+      // 有缓存数据，立即返回，同时异步刷新缓存
+      _refreshSearchHistoryInBackground(context);
       return cachedData;
     }
 
@@ -429,6 +431,54 @@ class PageCacheService {
     Future.microtask(() async {
       try {
         await refreshFavorites(context);
+      } catch (e) {
+        // 静默处理错误，不影响主流程
+      }
+    });
+  }
+
+  /// 添加搜索历史到缓存
+  void addSearchHistoryToCache(String query) {
+    const cacheKey = 'search_history';
+    final cachedData = getCache<List<String>>(cacheKey);
+    
+    if (cachedData != null) {
+      // 检查是否已存在相同的搜索词
+      if (!cachedData.contains(query)) {
+        // 不存在，添加到列表开头
+        final updatedHistory = [query, ...cachedData];
+        // 限制历史记录数量为10条
+        final limitedHistory = updatedHistory.take(10).toList();
+        setCache(cacheKey, limitedHistory);
+      } else {
+        // 已存在，移动到列表开头
+        final updatedHistory = [query, ...cachedData.where((item) => item != query).toList()];
+        setCache(cacheKey, updatedHistory);
+      }
+    } else {
+      // 没有缓存数据，创建新的历史记录
+      setCache(cacheKey, [query]);
+    }
+  }
+
+  /// 从缓存中删除指定的搜索历史
+  void removeSearchHistoryFromCache(String query) {
+    const cacheKey = 'search_history';
+    final cachedData = getCache<List<String>>(cacheKey);
+    
+    if (cachedData != null) {
+      // 创建新的列表，排除要删除的搜索词
+      final updatedHistory = cachedData.where((item) => item != query).toList();
+      setCache(cacheKey, updatedHistory);
+    }
+  }
+
+  /// 后台异步刷新搜索历史
+  void _refreshSearchHistoryInBackground(BuildContext context) {
+    // 异步执行，不等待结果
+    Future.microtask(() async {
+      try {
+        await refreshSearchHistory(context);
       } catch (e) {
         // 静默处理错误，不影响主流程
       }

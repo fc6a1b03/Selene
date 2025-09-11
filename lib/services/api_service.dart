@@ -374,6 +374,21 @@ class ApiService {
     }
   }
 
+  /// 添加搜索历史
+  static Future<ApiResponse<void>> addSearchHistory(String query, BuildContext context) async {
+    try {
+      final response = await post<void>(
+        '/api/searchhistory',
+        context: context,
+        body: {'keyword': query},
+      );
+      
+      return response;
+    } catch (e) {
+      return ApiResponse.error('添加搜索历史异常: ${e.toString()}');
+    }
+  }
+
   /// 清空搜索历史
   static Future<ApiResponse<void>> clearSearchHistory(BuildContext context) async {
     try {
@@ -385,6 +400,21 @@ class ApiService {
       return response;
     } catch (e) {
       return ApiResponse.error('清空搜索历史异常: ${e.toString()}');
+    }
+  }
+
+  /// 删除单个搜索历史
+  static Future<ApiResponse<void>> deleteSearchHistory(String query, BuildContext context) async {
+    try {
+      final encodedQuery = Uri.encodeComponent(query);
+      final response = await delete<void>(
+        '/api/searchhistory?keyword=$encodedQuery',
+        context: context,
+      );
+      
+      return response;
+    } catch (e) {
+      return ApiResponse.error('删除搜索历史异常: ${e.toString()}');
     }
   }
 

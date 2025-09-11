@@ -27,7 +27,7 @@ class SearchScreen extends StatefulWidget {
   State<SearchScreen> createState() => _SearchScreenState();
 }
 
-class _SearchScreenState extends State<SearchScreen> {
+class _SearchScreenState extends State<SearchScreen> with TickerProviderStateMixin {
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
   String _searchQuery = '';
@@ -38,6 +38,11 @@ class _SearchScreenState extends State<SearchScreen> {
   String? _searchError;
   SearchProgress? _searchProgress;
   Timer? _updateTimer; // 用于防抖的定时器
+  
+  // 长按删除相关状态
+  String? _deletingHistoryItem;
+  AnimationController? _deleteAnimationController;
+  Animation<double>? _deleteAnimation;
   
   late SSESearchService _searchService;
   StreamSubscription<List<SearchResult>>? _incrementalResultsSubscription;
@@ -51,6 +56,19 @@ class _SearchScreenState extends State<SearchScreen> {
     _searchService = SSESearchService();
     _setupSearchListeners();
     _loadSearchHistory();
+    
+    // 初始化删除动画控制器
+    _deleteAnimationController = AnimationController(
+      duration: const Duration(milliseconds: 1500), // 1.5秒变红动画
+      vsync: this,
+    );
+    _deleteAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(
+      parent: _deleteAnimationController!,
+      curve: Curves.easeInOut,
+    ));
   }
 
   @override
@@ -63,6 +81,7 @@ class _SearchScreenState extends State<SearchScreen> {
     _eventSubscription?.cancel();
     _updateTimer?.cancel();
     _searchService.dispose();
+    _deleteAnimationController?.dispose();
     super.dispose();
   }
 
@@ -174,6 +193,48 @@ class _SearchScreenState extends State<SearchScreen> {
       await PageCacheService().refreshFavorites(context);
     } catch (e) {
       // 错误处理，静默处理
+    }
+  }
+
+  /// 添加搜索历史（本地状态、缓存、服务器）
+  void addSearchHistory(String query) {
+    if (query.trim().isEmpty) return;
+    
+    final trimmedQuery = query.trim();
+    
+    // 立即添加到缓存
+    PageCacheService().addSearchHistoryToCache(trimmedQuery);
+    
+    // 立即更新本地状态和UI
+    if (mounted) {
+      setState(() {
+        // 如果不存在则添加到列表开头
+        if (!_searchHistory.contains(trimmedQuery)) {
+          _searchHistory.insert(0, trimmedQuery);
+        } else {
+          // 如果已存在，移动到开头
+          _searchHistory.remove(trimmedQuery);
+          _searchHistory.insert(0, trimmedQuery);
+        }
+      });
+    }
+    
+    // 异步添加到服务器（不等待结果）
+    _addSearchHistoryToServer(trimmedQuery);
+  }
+
+  /// 异步添加搜索历史到服务器
+  Future<void> _addSearchHistoryToServer(String query) async {
+    try {
+      final response = await ApiService.addSearchHistory(query, context);
+      
+      if (!response.success) {
+        // API调用失败，异步刷新搜索历史以恢复数据
+        _refreshSearchHistory();
+      }
+    } catch (e) {
+      // 异常时异步刷新搜索历史以恢复数据
+      _refreshSearchHistory();
     }
   }
 
@@ -301,65 +362,65 @@ class _SearchScreenState extends State<SearchScreen> {
       final response = await ApiService.clearSearchHistory(context);
 
       if (response.success) {
-        setState(() {
-          _searchHistory.clear();
-        });
         // 清除缓存
         PageCacheService().clearCache('search_history');
-        // 显示成功提示
+        // 立即清空本地状态
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                '搜索历史已清空',
-                style: GoogleFonts.poppins(color: Colors.white),
-              ),
-              backgroundColor: const Color(0xFF27ae60),
-              behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-              margin: const EdgeInsets.all(16),
-            ),
-          );
+          setState(() {
+            _searchHistory.clear();
+          });
         }
       } else {
-        // 显示错误提示
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                response.message ?? '清空失败',
-                style: GoogleFonts.poppins(color: Colors.white),
-              ),
-              backgroundColor: const Color(0xFFe74c3c),
-              behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-              margin: const EdgeInsets.all(16),
-            ),
-          );
-        }
+        // 异常时异步刷新搜索历史以恢复数据
+        _refreshSearchHistory();  
       }
     } catch (e) {
-      // 显示错误提示
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              '清空失败: ${e.toString()}',
-              style: GoogleFonts.poppins(color: Colors.white),
-            ),
-            backgroundColor: const Color(0xFFe74c3c),
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
-            margin: const EdgeInsets.all(16),
-          ),
-        );
+      // 异常时异步刷新搜索历史以恢复数据
+      _refreshSearchHistory();
+    }
+  }
+
+  /// 开始删除动画
+  void _startDeleteAnimation(String historyItem) {
+    setState(() {
+      _deletingHistoryItem = historyItem;
+    });
+    _deleteAnimationController?.forward().then((_) {
+      // 动画完成后执行删除
+      _deleteSearchHistory(historyItem);
+    });
+  }
+
+  /// 取消删除动画
+  void _cancelDeleteAnimation() {
+    _deleteAnimationController?.reset();
+    setState(() {
+      _deletingHistoryItem = null;
+    });
+  }
+
+  /// 删除单个搜索历史
+  Future<void> _deleteSearchHistory(String historyItem) async {
+    try {
+      // 从缓存中移除
+      PageCacheService().removeSearchHistoryFromCache(historyItem);
+
+      // 先立即从UI中移除
+      setState(() {
+        _searchHistory.remove(historyItem);
+        _deletingHistoryItem = null;
+      });
+      
+      // 调用API删除
+      final response = await ApiService.deleteSearchHistory(historyItem, context);
+
+      if (!response.success) {
+        // API调用失败，异步刷新搜索历史以恢复数据
+        _refreshSearchHistory();
       }
+    } catch (e) {
+      // 异常时异步刷新搜索历史以恢复数据
+      _refreshSearchHistory();
     }
   }
 
@@ -376,14 +437,7 @@ class _SearchScreenState extends State<SearchScreen> {
     });
 
     // 添加到搜索历史
-    if (!_searchHistory.contains(_searchQuery)) {
-      setState(() {
-        _searchHistory.insert(0, _searchQuery);
-        if (_searchHistory.length > 10) {
-          _searchHistory = _searchHistory.take(10).toList();
-        }
-      });
-    }
+    addSearchHistory(_searchQuery);
 
     // 搜索框失焦
     _searchFocusNode.unfocus();
@@ -534,7 +588,9 @@ class _SearchScreenState extends State<SearchScreen> {
         ),
         onSubmitted: _performSearch,
         onChanged: (value) {
-          _searchQuery = value;
+          setState(() {
+            _searchQuery = value;
+          });
         },
       ),
     );
@@ -584,37 +640,109 @@ class _SearchScreenState extends State<SearchScreen> {
           spacing: 8,
           runSpacing: 8,
           children: _searchHistory.map((history) {
+            final isDeleting = _deletingHistoryItem == history;
+            
             return GestureDetector(
               onTap: () {
-                _searchController.text = history;
-                _performSearch(history);
+                if (!isDeleting) {
+                  _searchController.text = history;
+                  _performSearch(history);
+                }
               },
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 8,
-                ),
-                decoration: BoxDecoration(
-                  color: themeService.isDarkMode 
-                      ? const Color(0xFF1e1e1e)
-                      : Colors.white,
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: themeService.isDarkMode 
-                        ? const Color(0xFF333333)
-                        : const Color(0xFFe9ecef),
-                    width: 1,
-                  ),
-                ),
-                child: Text(
-                  history,
-                  style: GoogleFonts.poppins(
-                    fontSize: 14,
-                    color: themeService.isDarkMode 
+              onLongPressStart: (_) {
+                if (!isDeleting) {
+                  _startDeleteAnimation(history);
+                }
+              },
+              onLongPressEnd: (_) {
+                if (isDeleting) {
+                  _cancelDeleteAnimation();
+                }
+              },
+              child: AnimatedBuilder(
+                animation: _deleteAnimation ?? const AlwaysStoppedAnimation(0.0),
+                builder: (context, child) {
+                  // 计算颜色插值
+                  Color backgroundColor;
+                  Color textColor;
+                  Color borderColor;
+                  
+                  if (isDeleting) {
+                    final animationValue = _deleteAnimation?.value ?? 0.0;
+                    
+                    // 背景色从正常色渐变到红色
+                    backgroundColor = Color.lerp(
+                      themeService.isDarkMode 
+                          ? const Color(0xFF1e1e1e)
+                          : Colors.white,
+                      const Color(0xFFe74c3c).withOpacity(0.2),
+                      animationValue,
+                    )!;
+                    
+                    // 文字色从正常色渐变到红色
+                    textColor = Color.lerp(
+                      themeService.isDarkMode 
+                          ? const Color(0xFFffffff)
+                          : const Color(0xFF2c3e50),
+                      const Color(0xFFe74c3c),
+                      animationValue,
+                    )!;
+                    
+                    // 边框色从正常色渐变到红色
+                    borderColor = Color.lerp(
+                      themeService.isDarkMode 
+                          ? const Color(0xFF333333)
+                          : const Color(0xFFe9ecef),
+                      const Color(0xFFe74c3c),
+                      animationValue,
+                    )!;
+                  } else {
+                    backgroundColor = themeService.isDarkMode 
+                        ? const Color(0xFF1e1e1e)
+                        : Colors.white;
+                    textColor = themeService.isDarkMode 
                         ? const Color(0xFFffffff)
-                        : const Color(0xFF2c3e50),
-                  ),
-                ),
+                        : const Color(0xFF2c3e50);
+                    borderColor = themeService.isDarkMode 
+                        ? const Color(0xFF333333)
+                        : const Color(0xFFe9ecef);
+                  }
+                  
+                  return Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
+                    decoration: BoxDecoration(
+                      color: backgroundColor,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: borderColor,
+                        width: 1,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          history,
+                          style: GoogleFonts.poppins(
+                            fontSize: 14,
+                            color: textColor,
+                          ),
+                        ),
+                        if (isDeleting) ...[
+                          const SizedBox(width: 8),
+                          Icon(
+                            Icons.delete_outline,
+                            size: 16,
+                            color: textColor,
+                          ),
+                        ],
+                      ],
+                    ),
+                  );
+                },
               ),
             );
           }).toList(),
