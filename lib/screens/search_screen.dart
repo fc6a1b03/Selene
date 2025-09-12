@@ -5,12 +5,10 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import '../services/page_cache_service.dart';
-import '../services/api_service.dart';
 import '../services/theme_service.dart';
 import '../services/sse_search_service.dart';
 import '../models/search_result.dart';
 import '../models/video_info.dart';
-import '../services/favorite_service.dart';
 import '../widgets/video_card.dart';
 import '../widgets/video_menu_bottom_sheet.dart';
 import '../widgets/favorites_grid.dart';
@@ -144,6 +142,15 @@ class _SearchScreenState extends State<SearchScreen> with TickerProviderStateMix
     // 监听搜索错误
     _errorSubscription = _searchService.errorStream.listen((error) {
       if (mounted) {
+        // 检查是否是连接关闭错误，如果是则忽略
+        final errorString = error.toLowerCase();
+        if (errorString.contains('connection closed') || 
+            errorString.contains('clientexception') ||
+            errorString.contains('connection terminated')) {
+          // 连接被关闭，这是正常情况，不显示错误
+          return;
+        }
+        
         setState(() {
           _searchError = error;
         });
@@ -168,14 +175,15 @@ class _SearchScreenState extends State<SearchScreen> with TickerProviderStateMix
         });
       }
     }
-
-    // 然后在后台异步刷新数据
-    _refreshSearchHistory();
   }
 
   Future<void> _refreshSearchHistory() async {
     try {
-      final result = await PageCacheService().refreshSearchHistory(context);
+      // 刷新缓存数据
+      await PageCacheService().refreshSearchHistory(context);
+      
+      // 重新获取搜索历史数据
+      final result = await PageCacheService().getSearchHistory(context);
       if (mounted) {
         setState(() {
           _searchHistory = result.success ? (result.data ?? []) : [];
@@ -203,40 +211,27 @@ class _SearchScreenState extends State<SearchScreen> with TickerProviderStateMix
     final trimmedQuery = query.trim();
     
     // 立即添加到缓存
-    PageCacheService().addSearchHistoryToCache(trimmedQuery);
+    PageCacheService().addSearchHistory(trimmedQuery, context);
     
     // 立即更新本地状态和UI
     if (mounted) {
       setState(() {
-        // 如果不存在则添加到列表开头
-        if (!_searchHistory.contains(trimmedQuery)) {
+        // 检查是否已存在相同的搜索词（区分大小写）
+        final existingIndex = _searchHistory.indexWhere((item) => item == trimmedQuery);
+        
+        if (existingIndex == -1) {
+          // 不存在，添加到列表开头
           _searchHistory.insert(0, trimmedQuery);
         } else {
-          // 如果已存在，移动到开头
-          _searchHistory.remove(trimmedQuery);
-          _searchHistory.insert(0, trimmedQuery);
+          // 已存在，移动到开头（保持原始大小写）
+          final existingItem = _searchHistory[existingIndex];
+          _searchHistory.removeAt(existingIndex);
+          _searchHistory.insert(0, existingItem);
         }
       });
     }
-    
-    // 异步添加到服务器（不等待结果）
-    _addSearchHistoryToServer(trimmedQuery);
   }
 
-  /// 异步添加搜索历史到服务器
-  Future<void> _addSearchHistoryToServer(String query) async {
-    try {
-      final response = await ApiService.addSearchHistory(query, context);
-      
-      if (!response.success) {
-        // API调用失败，异步刷新搜索历史以恢复数据
-        _refreshSearchHistory();
-      }
-    } catch (e) {
-      // 异常时异步刷新搜索历史以恢复数据
-      _refreshSearchHistory();
-    }
-  }
 
   /// 显示清空确认弹窗
   void _showClearConfirmation() {
@@ -359,11 +354,9 @@ class _SearchScreenState extends State<SearchScreen> with TickerProviderStateMix
   /// 清空搜索历史
   Future<void> _clearSearchHistory() async {
     try {
-      final response = await ApiService.clearSearchHistory(context);
-
-      if (response.success) {
-        // 清除缓存
-        PageCacheService().clearCache('search_history');
+      final result = await PageCacheService().clearSearchHistory(context);
+      
+      if (result.success) {
         // 立即清空本地状态
         if (mounted) {
           setState(() {
@@ -402,19 +395,17 @@ class _SearchScreenState extends State<SearchScreen> with TickerProviderStateMix
   /// 删除单个搜索历史
   Future<void> _deleteSearchHistory(String historyItem) async {
     try {
-      // 从缓存中移除
-      PageCacheService().removeSearchHistoryFromCache(historyItem);
+      final result = await PageCacheService().deleteSearchHistory(historyItem, context);
 
-      // 先立即从UI中移除
-      setState(() {
-        _searchHistory.remove(historyItem);
-        _deletingHistoryItem = null;
-      });
-      
-      // 调用API删除
-      final response = await ApiService.deleteSearchHistory(historyItem, context);
-
-      if (!response.success) {
+      if (result.success) {
+        // 立即从UI中移除
+        if (mounted) {
+          setState(() {
+            _searchHistory.remove(historyItem);
+            _deletingHistoryItem = null;
+          });
+        }
+      } else {
         // API调用失败，异步刷新搜索历史以恢复数据
         _refreshSearchHistory();
       }
@@ -450,6 +441,15 @@ class _SearchScreenState extends State<SearchScreen> with TickerProviderStateMix
       _setupSearchListeners();
     } catch (e) {
       if (mounted) {
+        // 检查是否是连接关闭错误，如果是则忽略
+        final errorString = e.toString().toLowerCase();
+        if (errorString.contains('connection closed') || 
+            errorString.contains('clientexception') ||
+            errorString.contains('connection terminated')) {
+          // 连接被关闭，这是正常情况，不显示错误
+          return;
+        }
+        
         setState(() {
           _searchError = e.toString();
         });
@@ -953,24 +953,21 @@ class _SearchScreenState extends State<SearchScreen> with TickerProviderStateMix
         'year': videoInfo.year,
       };
 
-      // 立即添加到缓存
-      PageCacheService().addFavoriteToCache(videoInfo.source, videoInfo.id, favoriteData);
-      
-      // 调用API添加收藏
-      final response = await ApiService.favorite(videoInfo.source, videoInfo.id, favoriteData, context);
+      // 使用统一的收藏方法（包含缓存操作和API调用）
+      final result = await PageCacheService().addFavorite(videoInfo.source, videoInfo.id, favoriteData, context);
 
-      if (response.success) {
+      if (result.success) {
         // 通知UI刷新收藏状态
         if (mounted) {
           setState(() {});
         }
       } else {
-        // API调用失败，显示错误提示
+        // 显示错误提示
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(
-                response.message ?? '收藏失败',
+                result.errorMessage ?? '收藏失败',
                 style: GoogleFonts.poppins(color: Colors.white),
               ),
               backgroundColor: const Color(0xFFe74c3c),
@@ -1012,24 +1009,21 @@ class _SearchScreenState extends State<SearchScreen> with TickerProviderStateMix
       // 先立即从UI中移除该项目
       FavoritesGrid.removeFavoriteFromUI(videoInfo.source, videoInfo.id);
       
-      // 立即从缓存中移除该项目
-      PageCacheService().removeFavoriteFromCache(videoInfo.source, videoInfo.id);
-      
       // 通知继续观看组件刷新收藏状态
       if (mounted) {
         setState(() {});
       }
       
-      // 调用API取消收藏
-      final response = await ApiService.unfavorite(videoInfo.source, videoInfo.id, context);
+      // 使用统一的取消收藏方法（包含缓存操作和API调用）
+      final result = await PageCacheService().removeFavorite(videoInfo.source, videoInfo.id, context);
 
-      if (!response.success) {
-        // API调用失败，显示错误提示
+      if (!result.success) {
+        // 显示错误提示
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(
-                response.message ?? '取消收藏失败',
+                result.errorMessage ?? '取消收藏失败',
                 style: GoogleFonts.poppins(color: Colors.white),
               ),
               backgroundColor: const Color(0xFFe74c3c),
@@ -1090,7 +1084,7 @@ class _SearchResultsGrid extends StatefulWidget {
 }
 
 class _SearchResultsGridState extends State<_SearchResultsGrid> with AutomaticKeepAliveClientMixin {
-  final FavoriteService _favoriteService = FavoriteService();
+  final PageCacheService _cacheService = PageCacheService();
   
   @override
   bool get wantKeepAlive => true;
@@ -1145,7 +1139,7 @@ class _SearchResultsGridState extends State<_SearchResultsGrid> with AutomaticKe
                 from: 'search',
                 cardWidth: itemWidth, // 传递计算出的宽度
                 onGlobalMenuAction: widget.onGlobalMenuAction != null ? (action) => widget.onGlobalMenuAction!(videoInfo, action) : null,
-                isFavorited: _favoriteService.isFavoritedSyncByVideoInfo(videoInfo), // 同步检查收藏状态
+                isFavorited: _cacheService.isFavoritedSync(videoInfo.source, videoInfo.id), // 同步检查收藏状态
               ),
             );
           },

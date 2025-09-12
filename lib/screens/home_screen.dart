@@ -13,7 +13,6 @@ import '../widgets/video_menu_bottom_sheet.dart';
 import '../widgets/custom_refresh_indicator.dart';
 import '../models/play_record.dart';
 import '../models/video_info.dart';
-import '../services/api_service.dart';
 import '../services/page_cache_service.dart';
 import 'movies_screen.dart';
 import 'series_screen.dart';
@@ -76,6 +75,11 @@ class _HomeScreenState extends State<HomeScreen> {
           FavoritesGrid.refreshFavorites();
         }
       }).catchError((e) {
+        // 静默处理错误
+      });
+
+      // 异步刷新搜索历史缓存
+      cacheService.refreshSearchHistory(context).catchError((e) {
         // 静默处理错误
       });
     } catch (e) {
@@ -435,19 +439,16 @@ class _HomeScreenState extends State<HomeScreen> {
       // 先从UI中移除记录
       _removePlayRecordFromUI(playRecord);
       
-      // 更新缓存，从缓存中移除记录
+      // 使用统一的删除方法（包含缓存操作和API调用）
       final cacheService = PageCacheService();
-      cacheService.removePlayRecordFromCache(playRecord.source, playRecord.id);
-      
-      // 调用API删除记录
-      final response = await ApiService.deletePlayRecord(
+      final result = await cacheService.deletePlayRecord(
         playRecord.source,
         playRecord.id,
         context,
       );
       
-      if (!response.success) {
-        throw Exception(response.message ?? '删除失败');
+      if (!result.success) {
+        throw Exception(result.errorMessage ?? '删除失败');
       }
     } catch (e) {
       // 删除失败时显示错误提示
@@ -498,24 +499,22 @@ class _HomeScreenState extends State<HomeScreen> {
         'year': playRecord.year,
       };
 
-      // 立即添加到缓存
-      PageCacheService().addFavoriteToCache(playRecord.source, playRecord.id, favoriteData);
-      
-      // 调用API添加收藏
-      final response = await ApiService.favorite(playRecord.source, playRecord.id, favoriteData, context);
+      // 使用统一的收藏方法（包含缓存操作和API调用）
+      final cacheService = PageCacheService();
+      final result = await cacheService.addFavorite(playRecord.source, playRecord.id, favoriteData, context);
 
-      if (response.success) {
+      if (result.success) {
         // 通知UI刷新收藏状态
         if (mounted) {
           setState(() {});
         }
       } else {
-        // API调用失败，显示错误提示
+        // 显示错误提示
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(
-                response.message ?? '收藏失败',
+                result.errorMessage ?? '收藏失败',
                 style: GoogleFonts.poppins(color: Colors.white),
               ),
               backgroundColor: const Color(0xFFe74c3c),
@@ -557,24 +556,22 @@ class _HomeScreenState extends State<HomeScreen> {
       // 先立即从UI中移除该项目
       FavoritesGrid.removeFavoriteFromUI(playRecord.source, playRecord.id);
       
-      // 立即从缓存中移除该项目
-      PageCacheService().removeFavoriteFromCache(playRecord.source, playRecord.id);
-      
       // 通知继续观看组件刷新收藏状态
       if (mounted) {
         setState(() {});
       }
       
-      // 调用API取消收藏
-      final response = await ApiService.unfavorite(playRecord.source, playRecord.id, context);
+      // 使用统一的取消收藏方法（包含缓存操作和API调用）
+      final cacheService = PageCacheService();
+      final result = await cacheService.removeFavorite(playRecord.source, playRecord.id, context);
 
-      if (!response.success) {
-        // API调用失败，显示错误提示
+      if (!result.success) {
+        // 显示错误提示
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(
-                response.message ?? '取消收藏失败',
+                result.errorMessage ?? '取消收藏失败',
                 style: GoogleFonts.poppins(color: Colors.white),
               ),
               backgroundColor: const Color(0xFFe74c3c),

@@ -86,30 +86,14 @@ class _FavoritesGridState extends State<FavoritesGrid>
     });
 
     try {
-      // 先尝试从缓存获取收藏夹数据
-      final cachedFavorites = _cacheService.getCachedFavorites();
-      final cachedPlayRecords = _cacheService.getCachedPlayRecords();
-      
-      if (cachedFavorites != null && cachedPlayRecords != null) {
-        // 有缓存数据，立即显示
-        setState(() {
-          _favorites = cachedFavorites;
-          _playRecords = cachedPlayRecords;
-          _isLoading = false;
-        });
-        
-        // 异步获取最新数据
-        _refreshDataInBackground();
-      } else {
-        // 没有完整缓存，从API获取
-        await Future.wait([
-          _loadFavorites(),
-          _loadPlayRecords(),
-        ]);
-        setState(() {
-          _isLoading = false;
-        });
-      }
+      // 直接使用统一的获取方法（内部已包含缓存检查和异步刷新）
+      await Future.wait([
+        _loadFavorites(),
+        _loadPlayRecords(),
+      ]);
+      setState(() {
+        _isLoading = false;
+      });
     } catch (e) {
       setState(() {
         _errorMessage = e.toString();
@@ -139,7 +123,11 @@ class _FavoritesGridState extends State<FavoritesGrid>
   /// 刷新收藏夹数据
   Future<void> _refreshFavorites() async {
     try {
-      final result = await _cacheService.refreshFavorites(context);
+      // 刷新缓存数据
+      await _cacheService.refreshFavorites(context);
+      
+      // 重新获取收藏夹数据
+      final result = await _cacheService.getFavorites(context);
       
       if (result.success && result.data != null && mounted) {
         // 只有当新数据与当前数据不同时才更新UI
@@ -159,20 +147,23 @@ class _FavoritesGridState extends State<FavoritesGrid>
   /// 刷新播放记录数据
   Future<void> _refreshPlayRecords() async {
     try {
-      final result = await _cacheService.refreshPlayRecords(context);
+      await _cacheService.refreshPlayRecords(context);
       
-      if (result.success && result.data != null && mounted) {
-        // 只有当新数据与当前数据不同时才更新UI
-        if (_playRecords.length != result.data!.length || 
-            !_isSamePlayRecords(_playRecords, result.data!)) {
-          setState(() {
-            _playRecords = result.data!;
-          });
+      // 刷新成功后，从缓存获取最新数据
+      if (mounted) {
+        final cachedRecords = _cacheService.getCache<List<PlayRecord>>('play_records');
+        if (cachedRecords != null) {
+          // 只有当新数据与当前数据不同时才更新UI
+          if (_playRecords.length != cachedRecords.length || 
+              !_isSamePlayRecords(_playRecords, cachedRecords)) {
+            setState(() {
+              _playRecords = cachedRecords;
+            });
+          }
         }
       }
-      // 如果刷新失败，保持原有数据不变
     } catch (e) {
-      // 刷新失败，静默处理，保持原有数据
+      // 静默处理错误，保持原有数据
     }
   }
 

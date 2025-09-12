@@ -7,7 +7,6 @@ import '../models/video_info.dart';
 import '../services/api_service.dart';
 import '../services/page_cache_service.dart';
 import '../services/theme_service.dart';
-import '../services/favorite_service.dart';
 import 'video_card.dart';
 import 'video_menu_bottom_sheet.dart';
 
@@ -46,7 +45,6 @@ class _ContinueWatchingSectionState extends State<ContinueWatchingSection>
   late AnimationController _shimmerController;
   late Animation<double> _shimmerAnimation;
   final PageCacheService _cacheService = PageCacheService();
-  final FavoriteService _favoriteService = FavoriteService();
   
   // 静态变量存储当前实例
   static _ContinueWatchingSectionState? _currentInstance;
@@ -157,23 +155,26 @@ class _ContinueWatchingSectionState extends State<ContinueWatchingSection>
     
     try {
       // 只刷新播放记录数据
-      final result = await _cacheService.refreshPlayRecords(context);
+      await _cacheService.refreshPlayRecords(context);
       
-      if (result.success && result.data != null && mounted) {
-        // 只有当新数据与当前数据不同时才更新UI
-        if (_playRecords.length != result.data!.length || 
-            !_isSamePlayRecords(_playRecords, result.data!)) {
-          if (mounted) {
-            setState(() {
-              _playRecords = result.data!;
-            });
-            
-            // 预加载新图片
-            _preloadImages(result.data!);
+      // 刷新成功后，从缓存获取最新数据
+      if (mounted) {
+        final cachedRecords = _cacheService.getCache<List<PlayRecord>>('play_records');
+        if (cachedRecords != null) {
+          // 只有当新数据与当前数据不同时才更新UI
+          if (_playRecords.length != cachedRecords.length || 
+              !_isSamePlayRecords(_playRecords, cachedRecords)) {
+            if (mounted) {
+              setState(() {
+                _playRecords = cachedRecords;
+              });
+              
+              // 预加载新图片
+              _preloadImages(cachedRecords);
+            }
           }
         }
       }
-      // 如果刷新失败，保持原有数据不变，不更新UI
     } catch (e) {
       // 后台刷新失败，静默处理，保持原有数据
     }
@@ -502,7 +503,7 @@ class _ContinueWatchingSectionState extends State<ContinueWatchingSection>
                           from: 'playrecord',
                           cardWidth: cardWidth, // 使用动态计算的宽度
                           onGlobalMenuAction: (action) => widget.onGlobalMenuAction?.call(playRecord, action),
-                          isFavorited: _favoriteService.isFavoritedSync(playRecord), // 同步检测收藏状态
+                          isFavorited: _cacheService.isFavoritedSync(playRecord.source, playRecord.id), // 同步检测收藏状态
                         ),
                       );
                     },
@@ -680,15 +681,19 @@ class _ContinueWatchingSectionState extends State<ContinueWatchingSection>
     
     try {
       // 强制从API获取最新数据并更新缓存
-      final result = await _cacheService.refreshPlayRecords(context);
+      await _cacheService.refreshPlayRecords(context);
       
-      if (result.success && result.data != null && mounted) {
-        setState(() {
-          _playRecords = result.data!;
-        });
-        
-        // 预加载新图片
-        _preloadImages(result.data!);
+      // 刷新成功后，从缓存获取最新数据
+      if (mounted) {
+        final cachedRecords = _cacheService.getCache<List<PlayRecord>>('play_records');
+        if (cachedRecords != null) {
+          setState(() {
+            _playRecords = cachedRecords;
+          });
+          
+          // 预加载新图片
+          _preloadImages(cachedRecords);
+        }
       }
     } catch (e) {
       // 刷新失败，静默处理

@@ -286,13 +286,25 @@ class SSESearchService {
     _client = null;
   }
 
-  /// 处理 WebSocket 错误
+  /// 处理 SSE 错误
   void _handleError(error) {
     _isConnected = false;
-    _errorController?.add('WebSocket 错误: ${error.toString()}');
+    
+    // 检查是否是连接关闭错误，如果是则忽略
+    final errorString = error.toString().toLowerCase();
+    if (errorString.contains('connection closed') || 
+        errorString.contains('clientexception') ||
+        errorString.contains('connection terminated')) {
+      // 连接被关闭，这是正常情况，不显示错误
+      print('搜索连接已关闭: ${error.toString()}');
+      return;
+    }
+    
+    // 其他错误才显示给用户
+    _errorController?.add('SSE 错误: ${error.toString()}');
   }
 
-  /// 处理 WebSocket 关闭
+  /// 处理 SSE 关闭
   void _handleDone() {
     _isConnected = false;
   }

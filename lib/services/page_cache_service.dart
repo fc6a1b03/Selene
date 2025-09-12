@@ -52,7 +52,14 @@ class PageCacheService implements PlayRecordOperationInterface, FavoriteOperatio
       return DataOperationResult.success(cachedData);
     }
 
-    // 缓存未命中，从API获取
+    // 缓存未命中，直接走接口并保存到缓存
+    return await getPlayRecordsDirect(context);
+  }
+
+  /// 直接走接口并保存到缓存
+  Future<DataOperationResult<List<PlayRecord>>> getPlayRecordsDirect(BuildContext context) async {
+    const cacheKey = 'play_records';
+    
     try {
       final response = await ApiService.get<Map<String, dynamic>>(
         '/api/playrecords',
@@ -85,7 +92,7 @@ class PageCacheService implements PlayRecordOperationInterface, FavoriteOperatio
   }
 
   @override
-  Future<DataOperationResult<List<PlayRecord>>> refreshPlayRecords(BuildContext context) async {
+  Future<void> refreshPlayRecords(BuildContext context) async {
     const cacheKey = 'play_records';
     
     try {
@@ -110,62 +117,37 @@ class PageCacheService implements PlayRecordOperationInterface, FavoriteOperatio
 
         // 更新缓存数据
         setCache(cacheKey, records);
-        return DataOperationResult.success(records);
       }
     } catch (e) {
-      return DataOperationResult.error('刷新播放记录失败: ${e.toString()}');
+      // 静默处理错误，不影响主流程
     }
-    
-    return DataOperationResult.error('刷新播放记录失败');
   }
 
   @override
   Future<DataOperationResult<void>> deletePlayRecord(String source, String id, BuildContext context) async {
+    // 优先操作缓存
+    _removePlayRecordFromCache(source, id);
+    
     try {
       final response = await ApiService.deletePlayRecord(source, id, context);
       if (response.success) {
-        // 从缓存中删除
-        removePlayRecordFromCache(source, id);
+        // 异步刷新缓存
+        refreshPlayRecordsInBackground(context);
         return DataOperationResult.success(null);
       } else {
+        // 如果接口调用失败，恢复缓存
+        refreshPlayRecordsInBackground(context);
         return DataOperationResult.error(response.message ?? '删除播放记录失败');
       }
     } catch (e) {
+      // 如果接口调用异常，恢复缓存
+      refreshPlayRecordsInBackground(context);
       return DataOperationResult.error('删除播放记录异常: ${e.toString()}');
     }
   }
 
-  @override
-  Future<bool> isPlayRecordFavorited(PlayRecord playRecord, BuildContext context) async {
-    try {
-      final favorites = await getFavorites(context);
-      if (favorites.success && favorites.data != null && favorites.data!.isNotEmpty) {
-        // 根据 source+id 检查是否在收藏列表中
-        final key = '${playRecord.source}+${playRecord.id}';
-        return favorites.data!.any((favorite) => '${favorite.source}+${favorite.id}' == key);
-      }
-      return false;
-    } catch (e) {
-      return false;
-    }
-  }
 
-  @override
-  bool isPlayRecordFavoritedSync(PlayRecord playRecord) {
-    try {
-      final favorites = getCachedFavorites();
-      if (favorites == null || favorites.isEmpty) return false;
-      
-      // 根据 source+id 检查是否在收藏列表中
-      final key = '${playRecord.source}+${playRecord.id}';
-      return favorites.any((favorite) => '${favorite.source}+${favorite.id}' == key);
-    } catch (e) {
-      return false;
-    }
-  }
-
-  @override
-  void removePlayRecordFromCache(String source, String id) {
+  void _removePlayRecordFromCache(String source, String id) {
     const cacheKey = 'play_records';
     final cachedData = getCache<List<PlayRecord>>(cacheKey);
     
@@ -180,10 +162,6 @@ class PageCacheService implements PlayRecordOperationInterface, FavoriteOperatio
     }
   }
 
-  @override
-  List<PlayRecord>? getCachedPlayRecords() {
-    return getCache<List<PlayRecord>>('play_records');
-  }
 
   @override
   void refreshPlayRecordsInBackground(BuildContext context) {
@@ -213,7 +191,14 @@ class PageCacheService implements PlayRecordOperationInterface, FavoriteOperatio
       return DataOperationResult.success(filteredData);
     }
 
-    // 缓存未命中，从API获取
+    // 缓存未命中，直接走接口并保存到缓存
+    return await getFavoritesDirect(context);
+  }
+
+  /// 直接走接口并保存到缓存
+  Future<DataOperationResult<List<FavoriteItem>>> getFavoritesDirect(BuildContext context) async {
+    const cacheKey = 'favorites';
+    
     try {
       final response = await ApiService.getFavorites(context);
 
@@ -232,7 +217,7 @@ class PageCacheService implements PlayRecordOperationInterface, FavoriteOperatio
   }
 
   @override
-  Future<DataOperationResult<List<FavoriteItem>>> refreshFavorites(BuildContext context) async {
+  Future<void> refreshFavorites(BuildContext context) async {
     const cacheKey = 'favorites';
     
     try {
@@ -243,66 +228,63 @@ class PageCacheService implements PlayRecordOperationInterface, FavoriteOperatio
         final filteredData = response.data!.where((item) => item.origin != 'live').toList();
         // 更新缓存数据
         setCache(cacheKey, filteredData);
-        return DataOperationResult.success(filteredData);
       }
     } catch (e) {
-      return DataOperationResult.error('刷新收藏夹失败: ${e.toString()}');
+      // 静默处理错误，不影响主流程
     }
-    
-    return DataOperationResult.error('刷新收藏夹失败');
   }
 
   @override
   Future<DataOperationResult<void>> addFavorite(String source, String id, Map<String, dynamic> favoriteData, BuildContext context) async {
+    // 优先操作缓存
+    _addFavoriteToCache(source, id, favoriteData);
+    
     try {
       final response = await ApiService.favorite(source, id, favoriteData, context);
       if (response.success) {
-        // 添加到缓存
-        addFavoriteToCache(source, id, favoriteData);
+        // 异步刷新缓存
+        refreshFavoritesInBackground(context);
         return DataOperationResult.success(null);
       } else {
+        // 如果接口调用失败，恢复缓存
+        refreshFavoritesInBackground(context);
         return DataOperationResult.error(response.message ?? '添加收藏失败');
       }
     } catch (e) {
+      // 如果接口调用异常，恢复缓存
+      refreshFavoritesInBackground(context);
       return DataOperationResult.error('添加收藏异常: ${e.toString()}');
     }
   }
 
   @override
   Future<DataOperationResult<void>> removeFavorite(String source, String id, BuildContext context) async {
+    // 优先操作缓存
+    _removeFavoriteFromCache(source, id);
+    
     try {
       final response = await ApiService.unfavorite(source, id, context);
       if (response.success) {
-        // 从缓存中删除
-        removeFavoriteFromCache(source, id);
+        // 异步刷新缓存
+        refreshFavoritesInBackground(context);
         return DataOperationResult.success(null);
       } else {
+        // 如果接口调用失败，恢复缓存
+        refreshFavoritesInBackground(context);
         return DataOperationResult.error(response.message ?? '取消收藏失败');
       }
     } catch (e) {
+      // 如果接口调用异常，恢复缓存
+      refreshFavoritesInBackground(context);
       return DataOperationResult.error('取消收藏异常: ${e.toString()}');
     }
   }
 
-  @override
-  Future<bool> isFavorited(String source, String id, BuildContext context) async {
-    try {
-      final favorites = await getFavorites(context);
-      if (favorites.success && favorites.data != null && favorites.data!.isNotEmpty) {
-        // 根据 source+id 检查是否在收藏列表中
-        final key = '$source+$id';
-        return favorites.data!.any((favorite) => '${favorite.source}+${favorite.id}' == key);
-      }
-      return false;
-    } catch (e) {
-      return false;
-    }
-  }
 
   @override
   bool isFavoritedSync(String source, String id) {
     try {
-      final favorites = getCachedFavorites();
+      final favorites = _getCachedFavorites();
       if (favorites == null || favorites.isEmpty) return false;
       
       // 根据 source+id 检查是否在收藏列表中
@@ -313,8 +295,7 @@ class PageCacheService implements PlayRecordOperationInterface, FavoriteOperatio
     }
   }
 
-  @override
-  void removeFavoriteFromCache(String source, String id) {
+  void _removeFavoriteFromCache(String source, String id) {
     const cacheKey = 'favorites';
     final cachedData = getCache<List<FavoriteItem>>(cacheKey);
     
@@ -329,8 +310,7 @@ class PageCacheService implements PlayRecordOperationInterface, FavoriteOperatio
     }
   }
 
-  @override
-  void addFavoriteToCache(String source, String id, Map<String, dynamic> favoriteData) {
+  void _addFavoriteToCache(String source, String id, Map<String, dynamic> favoriteData) {
     const cacheKey = 'favorites';
     final cachedData = getCache<List<FavoriteItem>>(cacheKey);
     
@@ -361,8 +341,7 @@ class PageCacheService implements PlayRecordOperationInterface, FavoriteOperatio
     }
   }
 
-  @override
-  List<FavoriteItem>? getCachedFavorites() {
+  List<FavoriteItem>? _getCachedFavorites() {
     return getCache<List<FavoriteItem>>('favorites');
   }
 
@@ -392,7 +371,14 @@ class PageCacheService implements PlayRecordOperationInterface, FavoriteOperatio
       return DataOperationResult.success(cachedData);
     }
 
-    // 缓存未命中，从API获取
+    // 缓存未命中，直接走接口并保存到缓存
+    return await getSearchHistoryDirect(context);
+  }
+
+  /// 直接走接口并保存到缓存
+  Future<DataOperationResult<List<String>>> getSearchHistoryDirect(BuildContext context) async {
+    const cacheKey = 'search_history';
+    
     try {
       final response = await ApiService.getSearchHistory(context);
 
@@ -409,7 +395,7 @@ class PageCacheService implements PlayRecordOperationInterface, FavoriteOperatio
   }
 
   @override
-  Future<DataOperationResult<List<String>>> refreshSearchHistory(BuildContext context) async {
+  Future<void> refreshSearchHistory(BuildContext context) async {
     const cacheKey = 'search_history';
     
     try {
@@ -418,89 +404,58 @@ class PageCacheService implements PlayRecordOperationInterface, FavoriteOperatio
       if (response.success && response.data != null) {
         // 更新缓存数据
         setCache(cacheKey, response.data!);
-        return DataOperationResult.success(response.data!);
       }
     } catch (e) {
-      return DataOperationResult.error('刷新搜索历史失败: ${e.toString()}');
+      // 静默处理错误，不影响主流程
     }
-    
-    return DataOperationResult.error('刷新搜索历史失败');
   }
 
   @override
   Future<DataOperationResult<void>> addSearchHistory(String query, BuildContext context) async {
-    try {
-      final response = await ApiService.addSearchHistory(query, context);
-      if (response.success) {
-        // 添加到缓存
-        addSearchHistoryToCache(query);
-        return DataOperationResult.success(null);
-      } else {
-        return DataOperationResult.error(response.message ?? '添加搜索历史失败');
-      }
-    } catch (e) {
-      return DataOperationResult.error('添加搜索历史异常: ${e.toString()}');
-    }
-  }
-
-  @override
-  Future<DataOperationResult<void>> deleteSearchHistory(String query, BuildContext context) async {
-    try {
-      final response = await ApiService.deleteSearchHistory(query, context);
-      if (response.success) {
-        // 从缓存中删除
-        removeSearchHistoryFromCache(query);
-        return DataOperationResult.success(null);
-      } else {
-        return DataOperationResult.error(response.message ?? '删除搜索历史失败');
-      }
-    } catch (e) {
-      return DataOperationResult.error('删除搜索历史异常: ${e.toString()}');
-    }
-  }
-
-  @override
-  Future<DataOperationResult<void>> clearSearchHistory(BuildContext context) async {
-    try {
-      final response = await ApiService.clearSearchHistory(context);
-      if (response.success) {
-        // 清空缓存
-        clearCache('search_history');
-        return DataOperationResult.success(null);
-      } else {
-        return DataOperationResult.error(response.message ?? '清空搜索历史失败');
-      }
-    } catch (e) {
-      return DataOperationResult.error('清空搜索历史异常: ${e.toString()}');
-    }
-  }
-
-  @override
-  void addSearchHistoryToCache(String query) {
+    // 优先操作缓存
     const cacheKey = 'search_history';
     final cachedData = getCache<List<String>>(cacheKey);
     
     if (cachedData != null) {
-      // 检查是否已存在相同的搜索词
-      if (!cachedData.contains(query)) {
+      // 检查是否已存在相同的搜索词（区分大小写）
+      final existingIndex = cachedData.indexWhere((item) => item == query);
+      
+      if (existingIndex == -1) {
         // 不存在，添加到列表开头
         final updatedHistory = [query, ...cachedData];
-        // 限制历史记录数量为10条
-        final limitedHistory = updatedHistory.take(10).toList();
-        setCache(cacheKey, limitedHistory);
+        setCache(cacheKey, updatedHistory);
       } else {
-        // 已存在，移动到列表开头
-        final updatedHistory = [query, ...cachedData.where((item) => item != query).toList()];
+        // 已存在，移动到列表开头（保持原始大小写）
+        final existingItem = cachedData[existingIndex];
+        final updatedHistory = [existingItem, ...cachedData.where((item) => item != query).toList()];
         setCache(cacheKey, updatedHistory);
       }
     } else {
       // 没有缓存数据，创建新的历史记录
       setCache(cacheKey, [query]);
     }
+    
+    try {
+      final response = await ApiService.addSearchHistory(query, context);
+      if (response.success) {
+        // 异步刷新缓存
+        refreshSearchHistoryInBackground(context);
+        return DataOperationResult.success(null);
+      } else {
+        // 如果接口调用失败，恢复缓存
+        refreshSearchHistoryInBackground(context);
+        return DataOperationResult.error(response.message ?? '添加搜索历史失败');
+      }
+    } catch (e) {
+      // 如果接口调用异常，恢复缓存
+      refreshSearchHistoryInBackground(context);
+      return DataOperationResult.error('添加搜索历史异常: ${e.toString()}');
+    }
   }
 
   @override
-  void removeSearchHistoryFromCache(String query) {
+  Future<DataOperationResult<void>> deleteSearchHistory(String query, BuildContext context) async {
+    // 优先操作缓存
     const cacheKey = 'search_history';
     final cachedData = getCache<List<String>>(cacheKey);
     
@@ -509,12 +464,48 @@ class PageCacheService implements PlayRecordOperationInterface, FavoriteOperatio
       final updatedHistory = cachedData.where((item) => item != query).toList();
       setCache(cacheKey, updatedHistory);
     }
+    
+    try {
+      final response = await ApiService.deleteSearchHistory(query, context);
+      if (response.success) {
+        // 异步刷新缓存
+        refreshSearchHistoryInBackground(context);
+        return DataOperationResult.success(null);
+      } else {
+        // 如果接口调用失败，恢复缓存
+        refreshSearchHistoryInBackground(context);
+        return DataOperationResult.error(response.message ?? '删除搜索历史失败');
+      }
+    } catch (e) {
+      // 如果接口调用异常，恢复缓存
+      refreshSearchHistoryInBackground(context);
+      return DataOperationResult.error('删除搜索历史异常: ${e.toString()}');
+    }
   }
 
   @override
-  List<String>? getCachedSearchHistory() {
-    return getCache<List<String>>('search_history');
+  Future<DataOperationResult<void>> clearSearchHistory(BuildContext context) async {
+    // 优先操作缓存
+    clearCache('search_history');
+    
+    try {
+      final response = await ApiService.clearSearchHistory(context);
+      if (response.success) {
+        // 异步刷新缓存
+        refreshSearchHistoryInBackground(context);
+        return DataOperationResult.success(null);
+      } else {
+        // 如果接口调用失败，恢复缓存
+        refreshSearchHistoryInBackground(context);
+        return DataOperationResult.error(response.message ?? '清空搜索历史失败');
+      }
+    } catch (e) {
+      // 如果接口调用异常，恢复缓存
+      refreshSearchHistoryInBackground(context);
+      return DataOperationResult.error('清空搜索历史异常: ${e.toString()}');
+    }
   }
+
 
   @override
   void refreshSearchHistoryInBackground(BuildContext context) {
@@ -528,57 +519,29 @@ class PageCacheService implements PlayRecordOperationInterface, FavoriteOperatio
     });
   }
 
-  // ==================== 向后兼容方法 ====================
-
-  /// 获取播放记录（保持向后兼容）
-  Future<List<PlayRecord>?> getPlayRecordsLegacy(BuildContext context) async {
-    final result = await getPlayRecords(context);
-    return result.success ? result.data : null;
-  }
-
-  /// 刷新播放记录（保持向后兼容）
-  Future<List<PlayRecord>?> refreshPlayRecordsLegacy(BuildContext context) async {
-    final result = await refreshPlayRecords(context);
-    return result.success ? result.data : null;
-  }
-
-  /// 获取收藏夹（保持向后兼容）
-  Future<List<FavoriteItem>?> getFavoritesLegacy(BuildContext context) async {
-    final result = await getFavorites(context);
-    return result.success ? result.data : null;
-  }
-
-  /// 刷新收藏夹（保持向后兼容）
-  Future<List<FavoriteItem>?> refreshFavoritesLegacy(BuildContext context) async {
-    final result = await refreshFavorites(context);
-    return result.success ? result.data : null;
-  }
-
-  /// 获取搜索历史（保持向后兼容）
-  Future<List<String>?> getSearchHistoryLegacy(BuildContext context) async {
-    final result = await getSearchHistory(context);
-    return result.success ? result.data : null;
-  }
-
-  /// 刷新搜索历史（保持向后兼容）
-  Future<List<String>?> refreshSearchHistoryLegacy(BuildContext context) async {
-    final result = await refreshSearchHistory(context);
-    return result.success ? result.data : null;
-  }
 
   // ==================== 其他缓存方法 ====================
 
-  /// 获取热门电影
+  /// 获取热门电影（优先走缓存并异步刷新）
   Future<List<DoubanMovie>?> getHotMovies(BuildContext context) async {
     const cacheKey = 'hot_movies';
     
     // 先检查缓存
     final cachedData = getCache<List<DoubanMovie>>(cacheKey);
     if (cachedData != null) {
+      // 有缓存数据，立即返回，同时异步刷新缓存
+      refreshHotMoviesInBackground(context);
       return cachedData;
     }
 
-    // 缓存未命中，从API获取
+    // 缓存未命中，直接走接口并保存到缓存
+    return await getHotMoviesDirect(context);
+  }
+
+  /// 直接走接口并保存到缓存
+  Future<List<DoubanMovie>?> getHotMoviesDirect(BuildContext context) async {
+    const cacheKey = 'hot_movies';
+    
     try {
       final response = await DoubanService.getHotMovies(context);
 
@@ -594,17 +557,37 @@ class PageCacheService implements PlayRecordOperationInterface, FavoriteOperatio
     return null;
   }
 
-  /// 获取热门剧集
+  /// 异步刷新热门电影缓存
+  void refreshHotMoviesInBackground(BuildContext context) {
+    Future.microtask(() async {
+      try {
+        await getHotMoviesDirect(context);
+      } catch (e) {
+        // 静默处理错误，不影响主流程
+      }
+    });
+  }
+
+  /// 获取热门剧集（优先走缓存并异步刷新）
   Future<List<DoubanMovie>?> getHotTvShows(BuildContext context) async {
     const cacheKey = 'hot_tv_shows';
     
     // 先检查缓存
     final cachedData = getCache<List<DoubanMovie>>(cacheKey);
     if (cachedData != null) {
+      // 有缓存数据，立即返回，同时异步刷新缓存
+      refreshHotTvShowsInBackground(context);
       return cachedData;
     }
 
-    // 缓存未命中，从API获取
+    // 缓存未命中，直接走接口并保存到缓存
+    return await getHotTvShowsDirect(context);
+  }
+
+  /// 直接走接口并保存到缓存
+  Future<List<DoubanMovie>?> getHotTvShowsDirect(BuildContext context) async {
+    const cacheKey = 'hot_tv_shows';
+    
     try {
       final response = await DoubanService.getHotTvShows(context);
 
@@ -620,17 +603,37 @@ class PageCacheService implements PlayRecordOperationInterface, FavoriteOperatio
     return null;
   }
 
-  /// 获取新番放送数据
+  /// 异步刷新热门剧集缓存
+  void refreshHotTvShowsInBackground(BuildContext context) {
+    Future.microtask(() async {
+      try {
+        await getHotTvShowsDirect(context);
+      } catch (e) {
+        // 静默处理错误，不影响主流程
+      }
+    });
+  }
+
+  /// 获取新番放送数据（优先走缓存并异步刷新）
   Future<List<BangumiItem>?> getBangumiCalendar(BuildContext context) async {
     const cacheKey = 'bangumi_calendar';
     
     // 先检查缓存
     final cachedData = getCache<List<BangumiItem>>(cacheKey);
     if (cachedData != null) {
+      // 有缓存数据，立即返回，同时异步刷新缓存
+      refreshBangumiCalendarInBackground(context);
       return cachedData;
     }
 
-    // 缓存未命中，从API获取
+    // 缓存未命中，直接走接口并保存到缓存
+    return await getBangumiCalendarDirect(context);
+  }
+
+  /// 直接走接口并保存到缓存
+  Future<List<BangumiItem>?> getBangumiCalendarDirect(BuildContext context) async {
+    const cacheKey = 'bangumi_calendar';
+    
     try {
       const apiUrl = 'https://api.bgm.tv/calendar';
       final headers = {
@@ -676,17 +679,37 @@ class PageCacheService implements PlayRecordOperationInterface, FavoriteOperatio
     return null;
   }
 
-  /// 获取热门综艺数据
+  /// 异步刷新新番放送缓存
+  void refreshBangumiCalendarInBackground(BuildContext context) {
+    Future.microtask(() async {
+      try {
+        await getBangumiCalendarDirect(context);
+      } catch (e) {
+        // 静默处理错误，不影响主流程
+      }
+    });
+  }
+
+  /// 获取热门综艺数据（优先走缓存并异步刷新）
   Future<List<DoubanMovie>?> getHotShows(BuildContext context) async {
     const cacheKey = 'hot_shows';
     
     // 先检查缓存
     final cachedData = getCache<List<DoubanMovie>>(cacheKey);
     if (cachedData != null) {
+      // 有缓存数据，立即返回，同时异步刷新缓存
+      refreshHotShowsInBackground(context);
       return cachedData;
     }
 
-    // 缓存未命中，从API获取
+    // 缓存未命中，直接走接口并保存到缓存
+    return await getHotShowsDirect(context);
+  }
+
+  /// 直接走接口并保存到缓存
+  Future<List<DoubanMovie>?> getHotShowsDirect(BuildContext context) async {
+    const cacheKey = 'hot_shows';
+    
     try {
       final response = await DoubanService.getHotShows(context);
 
@@ -700,5 +723,16 @@ class PageCacheService implements PlayRecordOperationInterface, FavoriteOperatio
     }
     
     return null;
+  }
+
+  /// 异步刷新热门综艺缓存
+  void refreshHotShowsInBackground(BuildContext context) {
+    Future.microtask(() async {
+      try {
+        await getHotShowsDirect(context);
+      } catch (e) {
+        // 静默处理错误，不影响主流程
+      }
+    });
   }
 }

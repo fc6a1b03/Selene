@@ -2,7 +2,6 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
-import '../models/play_record.dart';
 import '../models/video_info.dart';
 import '../services/theme_service.dart';
 import 'video_card.dart';
@@ -14,9 +13,7 @@ class RecommendationSection extends StatelessWidget {
   final String? moreText; // 查看更多文本
   final VoidCallback? onMoreTap; // 查看更多点击回调
   final List<VideoInfo>? videoInfos; // 视频信息列表
-  final List<PlayRecord>? items; // 数据列表（向后兼容）
   final Function(VideoInfo)? onItemTap; // 项目点击回调
-  final Function(PlayRecord)? onPlayRecordTap; // PlayRecord点击回调（向后兼容）
   final Function(VideoInfo, VideoMenuAction)? onGlobalMenuAction; // 全局菜单操作回调
   final bool isLoading; // 是否加载中
   final bool hasError; // 是否有错误
@@ -30,9 +27,7 @@ class RecommendationSection extends StatelessWidget {
     this.moreText,
     this.onMoreTap,
     this.videoInfos,
-    this.items,
     this.onItemTap,
-    this.onPlayRecordTap,
     this.onGlobalMenuAction,
     this.isLoading = false,
     this.hasError = false,
@@ -44,7 +39,7 @@ class RecommendationSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // 获取当前使用的数据列表
-    final currentItems = videoInfos ?? items ?? [];
+    final currentItems = videoInfos ?? [];
     
     // 如果没有数据且不在加载中，隐藏组件
     if (!isLoading && currentItems.isEmpty) {
@@ -127,47 +122,22 @@ class RecommendationSection extends StatelessWidget {
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 16),
-            itemCount: (videoInfos ?? items ?? []).length,
+            itemCount: videoInfos?.length ?? 0,
             itemBuilder: (context, index) {
-              if (videoInfos != null) {
-                // 使用VideoInfo
-                final videoInfo = videoInfos![index];
-                return Container(
-                  margin: EdgeInsets.only(
-                    right: index < videoInfos!.length - 1 ? spacing : 0,
-                  ),
-                  child: VideoCard(
-                    videoInfo: videoInfo,
-                    onTap: () => onItemTap?.call(videoInfo),
-                    from: videoInfo.source == 'douban' ? 'douban' : (videoInfo.source == 'bangumi' ? 'bangumi' : 'playrecord'),
-                    cardWidth: cardWidth,
-                    onGlobalMenuAction: onGlobalMenuAction != null ? (action) => onGlobalMenuAction!(videoInfo, action) : null,
-                    isFavorited: false, // 推荐页面默认未收藏
-                  ),
-                );
-              } else {
-                // 使用PlayRecord（向后兼容）
-                final item = items![index];
-                final videoInfo = VideoInfo.fromPlayRecord(
-                  item,
-                  doubanId: rateMap?[item.id],
-                  bangumiId: null,
-                  rate: rateMap?[item.id],
-                );
-                return Container(
-                  margin: EdgeInsets.only(
-                    right: index < items!.length - 1 ? spacing : 0,
-                  ),
-                  child: VideoCard(
-                    videoInfo: videoInfo,
-                    onTap: () => onPlayRecordTap?.call(item),
-                    from: item.source == 'douban' ? 'douban' : (item.source == 'bangumi' ? 'bangumi' : 'playrecord'),
-                    cardWidth: cardWidth,
-                    onGlobalMenuAction: onGlobalMenuAction != null ? (action) => onGlobalMenuAction!(videoInfo, action) : null,
-                    isFavorited: false, // 推荐页面默认未收藏
-                  ),
-                );
-              }
+              final videoInfo = videoInfos![index];
+              return Container(
+                margin: EdgeInsets.only(
+                  right: index < videoInfos!.length - 1 ? spacing : 0,
+                ),
+                child: VideoCard(
+                  videoInfo: videoInfo,
+                  onTap: () => onItemTap?.call(videoInfo),
+                  from: videoInfo.source == 'douban' ? 'douban' : (videoInfo.source == 'bangumi' ? 'bangumi' : 'playrecord'),
+                  cardWidth: cardWidth,
+                  onGlobalMenuAction: onGlobalMenuAction != null ? (action) => onGlobalMenuAction!(videoInfo, action) : null,
+                  isFavorited: false, // 推荐页面默认未收藏
+                ),
+              );
             },
           ),
         );

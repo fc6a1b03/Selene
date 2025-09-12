@@ -377,6 +377,7 @@ class ApiService {
   /// 添加搜索历史
   static Future<ApiResponse<void>> addSearchHistory(String query, BuildContext context) async {
     try {
+      print({'keyword': query});
       final response = await post<void>(
         '/api/searchhistory',
         context: context,
