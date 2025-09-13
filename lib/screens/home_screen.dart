@@ -15,9 +15,10 @@ import '../models/play_record.dart';
 import '../models/video_info.dart';
 import '../services/page_cache_service.dart';
 import 'movies_screen.dart';
-import 'series_screen.dart';
+import 'tv_screen.dart';
 import 'anime_screen.dart';
-import 'variety_screen.dart';
+import 'show_screen.dart';
+import 'favorites_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -31,26 +32,11 @@ class _HomeScreenState extends State<HomeScreen> {
   String _selectedTopTab = '首页';
   bool _isSearchMode = false;
 
-  // 预加载所有页面，使用IndexedStack保持状态
-  late final List<Widget> _pages;
-  
-
   @override
   void initState() {
     super.initState();
-    _initializePages();
     // 进入首页时直接刷新播放记录和收藏夹缓存
     _refreshCacheOnHomeEnter();
-  }
-
-  void _initializePages() {
-    _pages = [
-      const SizedBox.shrink(), // 首页内容由 _buildHomeContentForTab 动态生成
-      const MoviesScreen(),
-      const SeriesScreen(),
-      const AnimeScreen(),
-      const VarietyScreen(),
-    ];
   }
 
   /// 进入首页时刷新缓存
@@ -222,12 +208,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return MainLayout(
       content: _isSearchMode
           ? _buildSearchContent()
-          : _currentBottomNavIndex == 0
-              ? _buildHomeContentForTab(_selectedTopTab)
-              : IndexedStack(
-                  index: _currentBottomNavIndex,
-                  children: _pages,
-                ),
+          : _buildCurrentPage(),
       currentBottomNavIndex: _currentBottomNavIndex,
       onBottomNavChanged: _onBottomNavChanged,
       selectedTopTab: _selectedTopTab,
@@ -238,7 +219,23 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-
+  /// 根据当前页面索引动态构建页面内容
+  Widget _buildCurrentPage() {
+    switch (_currentBottomNavIndex) {
+      case 0:
+        return _buildHomeContentForTab(_selectedTopTab);
+      case 1:
+        return const MoviesScreen();
+      case 2:
+        return const TVScreen();
+      case 3:
+        return const FavoritesScreen();
+      case 4:
+        return const ShowScreen();
+      default:
+        return const AnimeScreen();
+    }
+  }
 
   /// 处理底部导航栏切换
   void _onBottomNavChanged(int index) {

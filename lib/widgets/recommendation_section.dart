@@ -6,6 +6,7 @@ import '../models/video_info.dart';
 import '../services/theme_service.dart';
 import 'video_card.dart';
 import 'video_menu_bottom_sheet.dart';
+import 'shimmer_effect.dart';
 
 /// 推荐信息模块组件
 class RecommendationSection extends StatelessWidget {
@@ -190,28 +191,18 @@ class RecommendationSection extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             // 封面骨架
-            Container(
+            ShimmerEffect(
               width: width,
               height: height,
-              decoration: BoxDecoration(
-                color: themeService.isDarkMode 
-                    ? const Color(0xFF333333)
-                    : Colors.grey[300],
-                borderRadius: BorderRadius.circular(8),
-              ),
+              borderRadius: BorderRadius.circular(8),
             ),
             const SizedBox(height: 6),
             // 标题骨架
             Center(
-              child: Container(
-                height: 14,
+              child: ShimmerEffect(
                 width: width * 0.8,
-                decoration: BoxDecoration(
-                  color: themeService.isDarkMode 
-                      ? const Color(0xFF333333)
-                      : Colors.grey[300],
-                  borderRadius: BorderRadius.circular(4),
-                ),
+                height: 14,
+                borderRadius: BorderRadius.circular(4),
               ),
             ),
           ],

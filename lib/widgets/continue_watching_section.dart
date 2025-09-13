@@ -9,6 +9,7 @@ import '../services/page_cache_service.dart';
 import '../services/theme_service.dart';
 import 'video_card.dart';
 import 'video_menu_bottom_sheet.dart';
+import 'shimmer_effect.dart';
 
 /// 继续观看组件
 class ContinueWatchingSection extends StatefulWidget {
@@ -42,8 +43,6 @@ class _ContinueWatchingSectionState extends State<ContinueWatchingSection>
   List<PlayRecord> _playRecords = [];
   bool _isLoading = true;
   bool _hasError = false;
-  late AnimationController _shimmerController;
-  late Animation<double> _shimmerAnimation;
   final PageCacheService _cacheService = PageCacheService();
   
   // 静态变量存储当前实例
@@ -52,18 +51,6 @@ class _ContinueWatchingSectionState extends State<ContinueWatchingSection>
   @override
   void initState() {
     super.initState();
-    _shimmerController = AnimationController(
-      duration: const Duration(milliseconds: 1200), // 减少动画时长
-      vsync: this,
-    );
-    _shimmerAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _shimmerController,
-      curve: Curves.linear, // 使用线性曲线减少计算复杂度
-    ));
-    _shimmerController.repeat();
     
     // 设置当前实例
     _currentInstance = this;
@@ -78,7 +65,6 @@ class _ContinueWatchingSectionState extends State<ContinueWatchingSection>
 
   @override
   void dispose() {
-    _shimmerController.dispose();
     // 清除当前实例引用
     if (_currentInstance == this) {
       _currentInstance = null;
@@ -560,79 +546,30 @@ class _ContinueWatchingSectionState extends State<ContinueWatchingSection>
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         // 封面骨架
-        Container(
+        ShimmerEffect(
           width: width,
           height: height,
-          decoration: BoxDecoration(
-            color: Colors.grey[300],
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: _buildShimmerEffect(),
+          borderRadius: BorderRadius.circular(8),
         ),
         const SizedBox(height: 6),
         // 标题骨架
         Center(
-          child: Container(
-            height: 14,
+          child: ShimmerEffect(
             width: width * 0.8,
-            decoration: BoxDecoration(
-              color: Colors.grey[300],
-              borderRadius: BorderRadius.circular(4),
-            ),
-            child: _buildShimmerEffect(),
+            height: 14,
+            borderRadius: BorderRadius.circular(4),
           ),
         ),
         const SizedBox(height: 4),
         // 源名称骨架
         Center(
-          child: Container(
-            height: 10,
+          child: ShimmerEffect(
             width: width * 0.6,
-            decoration: BoxDecoration(
-              color: Colors.grey[300],
-              borderRadius: BorderRadius.circular(4),
-            ),
-            child: _buildShimmerEffect(),
+            height: 10,
+            borderRadius: BorderRadius.circular(4),
           ),
         ),
       ],
-    );
-  }
-
-  /// 构建闪烁效果
-  Widget _buildShimmerEffect() {
-    return Consumer<ThemeService>(
-      builder: (context, themeService, child) {
-        return AnimatedBuilder(
-          animation: _shimmerAnimation,
-          builder: (context, child) {
-            return Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.centerLeft,
-                  end: Alignment.centerRight,
-                  colors: themeService.isDarkMode
-                      ? [
-                          const Color(0xFF333333),
-                          const Color(0xFF1a1a1a),
-                          const Color(0xFF333333),
-                        ]
-                      : [
-                          Colors.grey[300]!,
-                          Colors.grey[100]!,
-                          Colors.grey[300]!,
-                        ],
-                  stops: [
-                    0.0,
-                    _shimmerAnimation.value,
-                    1.0,
-                  ],
-                ),
-              ),
-            );
-          },
-        );
-      },
     );
   }
 

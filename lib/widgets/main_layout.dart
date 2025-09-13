@@ -170,11 +170,11 @@ class _MainLayoutState extends State<MainLayout> {
               behavior: HitTestBehavior.opaque,
               child: Text(
                 'Selene',
-                style: GoogleFonts.poppins(
+                style: GoogleFonts.sourceCodePro(
                   fontSize: 24,
                   fontWeight: FontWeight.w300,
                   color: themeService.isDarkMode 
-                      ? const Color(0xFFffffff)
+                      ? Colors.white
                       : const Color(0xFF2c3e50),
                   letterSpacing: 1.5,
                 ),

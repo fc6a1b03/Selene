@@ -3,20 +3,20 @@ import 'package:google_fonts/google_fonts.dart';
 import '../widgets/custom_refresh_indicator.dart';
 import '../services/page_cache_service.dart';
 
-class VarietyScreen extends StatefulWidget {
-  const VarietyScreen({super.key});
+class TVScreen extends StatefulWidget {
+  const TVScreen({super.key});
 
   @override
-  State<VarietyScreen> createState() => _VarietyScreenState();
+  State<TVScreen> createState() => _TVScreenState();
 }
 
-class _VarietyScreenState extends State<VarietyScreen> {
-  /// 刷新综艺数据
-  Future<void> _refreshVarietyData() async {
+class _TVScreenState extends State<TVScreen> {
+  /// 刷新剧集数据
+  Future<void> _refreshSeriesData() async {
     try {
       final cacheService = PageCacheService();
       
-      // 刷新综艺相关缓存数据
+      // 刷新剧集相关缓存数据
       await Future.wait([
         cacheService.refreshPlayRecords(context),
         cacheService.refreshFavorites(context),
@@ -35,21 +35,21 @@ class _VarietyScreenState extends State<VarietyScreen> {
   @override
   Widget build(BuildContext context) {
     return StyledRefreshIndicator(
-      onRefresh: _refreshVarietyData,
-      refreshText: '刷新综艺数据...',
+      onRefresh: _refreshSeriesData,
+      refreshText: '刷新剧集数据...',
       primaryColor: const Color(0xFF27AE60), // 绿色主题
       child: SingleChildScrollView(
         child: Column(
           children: [
             const SizedBox(height: 20),
-            // 综艺内容区域
+            // 剧集内容区域
             Container(
               padding: const EdgeInsets.all(16),
               child: Column(
                 children: [
                   // 标题
                   Text(
-                    '综艺',
+                    '剧集',
                     style: GoogleFonts.poppins(
                       fontSize: 24,
                       fontWeight: FontWeight.w600,
@@ -70,13 +70,13 @@ class _VarietyScreenState extends State<VarietyScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Icon(
-                            Icons.mic,
+                            Icons.tv,
                             size: 60,
                             color: const Color(0xFFbdc3c7),
                           ),
                           const SizedBox(height: 16),
                           Text(
-                            '综艺内容',
+                            '剧集内容',
                             style: GoogleFonts.poppins(
                               fontSize: 18,
                               fontWeight: FontWeight.w500,
@@ -85,7 +85,7 @@ class _VarietyScreenState extends State<VarietyScreen> {
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            '即将推出精彩综艺内容',
+                            '即将推出精彩剧集内容',
                             style: GoogleFonts.poppins(
                               fontSize: 14,
                               color: const Color(0xFF95a5a6),
