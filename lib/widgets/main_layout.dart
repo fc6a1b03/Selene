@@ -172,7 +172,7 @@ class _MainLayoutState extends State<MainLayout> {
                 'Selene',
                 style: GoogleFonts.sourceCodePro(
                   fontSize: 24,
-                  fontWeight: FontWeight.w300,
+                  fontWeight: FontWeight.w400,
                   color: themeService.isDarkMode 
                       ? Colors.white
                       : const Color(0xFF2c3e50),

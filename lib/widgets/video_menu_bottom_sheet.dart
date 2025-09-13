@@ -146,10 +146,10 @@ class VideoMenuBottomSheet extends StatelessWidget {
                           const SizedBox(height: 6),
                           
                           // 源名称标签
-                          videoInfo.source == 'douban' 
-                              ? // 豆瓣来源：纯文本，无边框
+                          (videoInfo.source == 'douban' || videoInfo.source == 'bangumi')
+                              ? // 豆瓣或Bangumi来源：纯文本，无边框
                                 Text(
-                                  '来自豆瓣',
+                                  videoInfo.source == 'douban' ? '来自豆瓣' : '来自 Bangumi',
                                   style: GoogleFonts.poppins(
                                     fontSize: 12,
                                     color: themeService.isDarkMode 
