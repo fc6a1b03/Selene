@@ -68,6 +68,14 @@ class BangumiRating {
       score: (json['score'] ?? 0.0).toDouble(),
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'total': total,
+      'count': count,
+      'score': score,
+    };
+  }
 }
 
 /// Bangumi 图片数据模型
@@ -94,6 +102,16 @@ class BangumiImages {
       small: json['small']?.toString() ?? '',
       grid: json['grid']?.toString() ?? '',
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'large': large,
+      'common': common,
+      'medium': medium,
+      'small': small,
+      'grid': grid,
+    };
   }
 
   /// 获取最佳图片URL，优先使用large，其次使用common
@@ -125,6 +143,12 @@ class BangumiCollection {
     return BangumiCollection(
       doing: json['doing'] ?? 0,
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'doing': doing,
+    };
   }
 }
 
@@ -199,6 +223,23 @@ class BangumiItem {
       images: BangumiImages.fromJson(json['images'] ?? {}),
       collection: BangumiCollection.fromJson(json['collection'] ?? {}),
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'url': url,
+      'type': type,
+      'name': name,
+      'name_cn': nameCn,
+      'summary': summary,
+      'air_date': airDate,
+      'air_weekday': airWeekday,
+      'rating': rating.toJson(),
+      'rank': rank,
+      'images': images.toJson(),
+      'collection': collection.toJson(),
+    };
   }
 
   /// 转换为PlayRecord格式，用于播放记录

@@ -5,8 +5,18 @@ import 'screens/home_screen.dart';
 import 'services/user_data_service.dart';
 import 'services/api_service.dart';
 import 'services/theme_service.dart';
+import 'services/douban_cache_service.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  // 初始化豆瓣缓存服务
+  final cacheService = DoubanCacheService();
+  await cacheService.init();
+  
+  // 启动定期清理
+  cacheService.startPeriodicCleanup();
+  
   runApp(const SeleneApp());
 }
 

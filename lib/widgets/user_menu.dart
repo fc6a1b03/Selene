@@ -4,6 +4,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../services/user_data_service.dart';
 import '../screens/login_screen.dart';
+import '../services/douban_cache_service.dart';
+import '../services/page_cache_service.dart';
 
 class UserMenu extends StatefulWidget {
   final bool isDarkMode;
@@ -97,6 +99,29 @@ class _UserMenuState extends State<UserMenu> {
         MaterialPageRoute(builder: (context) => const LoginScreen()),
         (route) => false,
       );
+    }
+  }
+
+  Future<void> _handleClearDoubanCache() async {
+    try {
+      await DoubanCacheService().clearAll();
+      // 同时清空 Bangumi 的函数级与内存级缓存
+      PageCacheService().clearCache('bangumi_calendar');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('已清除豆瓣缓存')),
+        );
+        // 清除后关闭菜单
+        widget.onClose?.call();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('清除豆瓣缓存失败')),
+        );
+        // 即便失败也关闭菜单，避免停留
+        widget.onClose?.call();
+      }
     }
   }
 
@@ -207,6 +232,46 @@ class _UserMenuState extends State<UserMenu> {
                             ],
                           ),
                         ],
+                      ),
+                    ),
+                    // 分割线
+                    Container(
+                      height: 1,
+                      color: widget.isDarkMode 
+                          ? const Color(0xFF374151)
+                          : const Color(0xFFe5e7eb),
+                    ),
+                    // 清除豆瓣缓存按钮
+                    Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: _handleClearDoubanCache,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 20,
+                            vertical: 16,
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                LucideIcons.trash2,
+                                size: 20,
+                                color: const Color(0xFFf59e0b),
+                              ),
+                              const SizedBox(width: 12),
+                              Text(
+                                '清除豆瓣缓存',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 16,
+                                  color: widget.isDarkMode 
+                                      ? const Color(0xFFffffff)
+                                      : const Color(0xFF1f2937),
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
                     ),
                     // 分割线

@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import '../models/douban_movie.dart';
 import 'api_service.dart';
+import 'douban_cache_service.dart';
 
 /// 豆瓣推荐数据请求参数
 class DoubanRecommendsParams {
@@ -61,6 +62,16 @@ class DoubanRequestParams {
 
 /// 豆瓣数据请求服务
 class DoubanService {
+  static final DoubanCacheService _cacheService = DoubanCacheService();
+  static bool _cacheInitialized = false;
+
+  /// 初始化缓存服务
+  static Future<void> _initCache() async {
+    if (!_cacheInitialized) {
+      await _cacheService.init();
+      _cacheInitialized = true;
+    }
+  }
   /// 获取豆瓣分类数据
   /// 
   /// 参数说明：
@@ -77,6 +88,43 @@ class DoubanService {
     int pageLimit = 20,
     int page = 0,
   }) async {
+    // 初始化缓存服务
+    await _initCache();
+
+    // 生成缓存键
+    final cacheKey = _cacheService.generateDoubanCategoryCacheKey(
+      kind: kind,
+      category: category,
+      type: type,
+      pageLimit: pageLimit,
+      page: page,
+    );
+
+    // 尝试从缓存获取数据（存取均为已处理后的 DoubanMovie 列表）
+    try {
+      final cachedData = await _cacheService.get<List<DoubanMovie>>(
+        cacheKey,
+        (raw) => (raw as List<dynamic>)
+            .map((m) {
+              final map = m as Map<String, dynamic>;
+              return DoubanMovie(
+                id: map['id']?.toString() ?? '',
+                title: map['title']?.toString() ?? '',
+                poster: map['poster']?.toString() ?? '',
+                rate: map['rate']?.toString(),
+                year: map['year']?.toString() ?? '',
+              );
+            })
+            .toList(),
+      );
+
+      if (cachedData != null) {
+        return ApiResponse.success(cachedData);
+      }
+    } catch (e) {
+      // 缓存读取失败，继续执行网络请求
+      print('读取缓存失败: $e');
+    }
     // 构建新的API URL
     final apiUrl = 'https://m.douban.cmliussss.net/rexxar/api/v2/subject/recent_hot/$kind?start=${page * pageLimit}&limit=$pageLimit&category=$category&type=$type';
     
@@ -96,6 +144,16 @@ class DoubanService {
           final Map<String, dynamic> data = json.decode(response.body);
           final doubanResponse = DoubanResponse.fromJson(data);
           
+          // 缓存成功的结果（保存已处理后的 DoubanMovie 列表），缓存时间为1天
+          try {
+            await _cacheService.set(
+              cacheKey,
+              doubanResponse.items.map((e) => e.toJson()).toList(),
+              const Duration(days: 1),
+            );
+          } catch (cacheError) {
+            print('缓存数据失败: $cacheError');
+          }
           
           return ApiResponse.success(doubanResponse.items, statusCode: response.statusCode);
         } catch (parseError) {
@@ -168,6 +226,48 @@ class DoubanService {
     bool useTencentCDN = false,
     bool useAliCDN = false,
   }) async {
+    // 初始化缓存服务
+    await _initCache();
+
+    // 生成缓存键
+    final cacheKey = _cacheService.generateDoubanRecommendsCacheKey(
+      kind: params.kind,
+      category: params.category,
+      format: params.format,
+      region: params.region,
+      year: params.year,
+      platform: params.platform,
+      sort: params.sort,
+      label: params.label,
+      pageLimit: params.pageLimit,
+      page: params.page,
+    );
+
+    // 尝试从缓存获取数据（存取均为已处理后的 DoubanMovie 列表）
+    try {
+      final cachedData = await _cacheService.get<List<DoubanMovie>>(
+        cacheKey,
+        (raw) => (raw as List<dynamic>)
+            .map((m) {
+              final map = m as Map<String, dynamic>;
+              return DoubanMovie(
+                id: map['id']?.toString() ?? '',
+                title: map['title']?.toString() ?? '',
+                poster: map['poster']?.toString() ?? '',
+                rate: map['rate']?.toString(),
+                year: map['year']?.toString() ?? '',
+              );
+            })
+            .toList(),
+      );
+
+      if (cachedData != null) {
+        return ApiResponse.success(cachedData);
+      }
+    } catch (e) {
+      // 缓存读取失败，继续执行网络请求
+      print('读取缓存失败: $e');
+    }
     // 处理筛选参数，将 'all' 转换为空字符串
     String category = params.category == 'all' ? '' : params.category;
     String format = params.format == 'all' ? '' : params.format;
@@ -251,6 +351,17 @@ class DoubanService {
               .where((item) => item['type'] == 'movie' || item['type'] == 'tv')
               .map((item) => DoubanMovie.fromJson(item as Map<String, dynamic>))
               .toList();
+
+          // 缓存成功的结果（保存已处理后的 DoubanMovie 列表），缓存时间为1天
+          try {
+            await _cacheService.set(
+              cacheKey,
+              filteredItems.map((e) => e.toJson()).toList(),
+              const Duration(days: 1),
+            );
+          } catch (cacheError) {
+            print('缓存数据失败: $cacheError');
+          }
 
           return ApiResponse.success(filteredItems, statusCode: response.statusCode);
         } catch (parseError) {

@@ -8,6 +8,7 @@ import '../models/favorite_item.dart';
 import 'api_service.dart';
 import 'douban_service.dart';
 import 'data_operation_interface.dart';
+import 'douban_cache_service.dart';
 
 /// 页面缓存服务 - 单例模式
 class PageCacheService implements PlayRecordOperationInterface, FavoriteOperationInterface, SearchRecordOperationInterface {
@@ -47,8 +48,7 @@ class PageCacheService implements PlayRecordOperationInterface, FavoriteOperatio
     // 先检查缓存
     final cachedData = getCache<List<PlayRecord>>(cacheKey);
     if (cachedData != null) {
-      // 有缓存数据，立即返回，同时异步刷新缓存
-      refreshPlayRecordsInBackground(context);
+      // 有缓存数据，直接返回
       return DataOperationResult.success(cachedData);
     }
 
@@ -131,17 +131,11 @@ class PageCacheService implements PlayRecordOperationInterface, FavoriteOperatio
     try {
       final response = await ApiService.deletePlayRecord(source, id, context);
       if (response.success) {
-        // 异步刷新缓存
-        refreshPlayRecordsInBackground(context);
         return DataOperationResult.success(null);
       } else {
-        // 如果接口调用失败，恢复缓存
-        refreshPlayRecordsInBackground(context);
         return DataOperationResult.error(response.message ?? '删除播放记录失败');
       }
     } catch (e) {
-      // 如果接口调用异常，恢复缓存
-      refreshPlayRecordsInBackground(context);
       return DataOperationResult.error('删除播放记录异常: ${e.toString()}');
     }
   }
@@ -165,14 +159,7 @@ class PageCacheService implements PlayRecordOperationInterface, FavoriteOperatio
 
   @override
   void refreshPlayRecordsInBackground(BuildContext context) {
-    // 异步执行，不等待结果
-    Future.microtask(() async {
-      try {
-        await refreshPlayRecords(context);
-      } catch (e) {
-        // 静默处理错误，不影响主流程
-      }
-    });
+    // 按需调用时手动刷新；默认不做异步刷新
   }
 
   // ==================== FavoriteOperationInterface 实现 ====================
@@ -184,8 +171,7 @@ class PageCacheService implements PlayRecordOperationInterface, FavoriteOperatio
     // 先检查缓存
     final cachedData = getCache<List<FavoriteItem>>(cacheKey);
     if (cachedData != null) {
-      // 有缓存数据，立即返回，同时异步刷新缓存
-      refreshFavoritesInBackground(context);
+      // 有缓存数据，直接返回
       // 过滤掉 origin=live 的数据
       final filteredData = cachedData.where((item) => item.origin != 'live').toList();
       return DataOperationResult.success(filteredData);
@@ -242,17 +228,11 @@ class PageCacheService implements PlayRecordOperationInterface, FavoriteOperatio
     try {
       final response = await ApiService.favorite(source, id, favoriteData, context);
       if (response.success) {
-        // 异步刷新缓存
-        refreshFavoritesInBackground(context);
         return DataOperationResult.success(null);
       } else {
-        // 如果接口调用失败，恢复缓存
-        refreshFavoritesInBackground(context);
         return DataOperationResult.error(response.message ?? '添加收藏失败');
       }
     } catch (e) {
-      // 如果接口调用异常，恢复缓存
-      refreshFavoritesInBackground(context);
       return DataOperationResult.error('添加收藏异常: ${e.toString()}');
     }
   }
@@ -265,17 +245,11 @@ class PageCacheService implements PlayRecordOperationInterface, FavoriteOperatio
     try {
       final response = await ApiService.unfavorite(source, id, context);
       if (response.success) {
-        // 异步刷新缓存
-        refreshFavoritesInBackground(context);
         return DataOperationResult.success(null);
       } else {
-        // 如果接口调用失败，恢复缓存
-        refreshFavoritesInBackground(context);
         return DataOperationResult.error(response.message ?? '取消收藏失败');
       }
     } catch (e) {
-      // 如果接口调用异常，恢复缓存
-      refreshFavoritesInBackground(context);
       return DataOperationResult.error('取消收藏异常: ${e.toString()}');
     }
   }
@@ -347,14 +321,7 @@ class PageCacheService implements PlayRecordOperationInterface, FavoriteOperatio
 
   @override
   void refreshFavoritesInBackground(BuildContext context) {
-    // 异步执行，不等待结果
-    Future.microtask(() async {
-      try {
-        await refreshFavorites(context);
-      } catch (e) {
-        // 静默处理错误，不影响主流程
-      }
-    });
+    // 按需调用时手动刷新；默认不做异步刷新
   }
 
   // ==================== SearchRecordOperationInterface 实现 ====================
@@ -366,8 +333,7 @@ class PageCacheService implements PlayRecordOperationInterface, FavoriteOperatio
     // 先检查缓存
     final cachedData = getCache<List<String>>(cacheKey);
     if (cachedData != null) {
-      // 有缓存数据，立即返回，同时异步刷新缓存
-      refreshSearchHistoryInBackground(context);
+      // 有缓存数据，直接返回
       return DataOperationResult.success(cachedData);
     }
 
@@ -438,17 +404,11 @@ class PageCacheService implements PlayRecordOperationInterface, FavoriteOperatio
     try {
       final response = await ApiService.addSearchHistory(query, context);
       if (response.success) {
-        // 异步刷新缓存
-        refreshSearchHistoryInBackground(context);
         return DataOperationResult.success(null);
       } else {
-        // 如果接口调用失败，恢复缓存
-        refreshSearchHistoryInBackground(context);
         return DataOperationResult.error(response.message ?? '添加搜索历史失败');
       }
     } catch (e) {
-      // 如果接口调用异常，恢复缓存
-      refreshSearchHistoryInBackground(context);
       return DataOperationResult.error('添加搜索历史异常: ${e.toString()}');
     }
   }
@@ -468,17 +428,11 @@ class PageCacheService implements PlayRecordOperationInterface, FavoriteOperatio
     try {
       final response = await ApiService.deleteSearchHistory(query, context);
       if (response.success) {
-        // 异步刷新缓存
-        refreshSearchHistoryInBackground(context);
         return DataOperationResult.success(null);
       } else {
-        // 如果接口调用失败，恢复缓存
-        refreshSearchHistoryInBackground(context);
         return DataOperationResult.error(response.message ?? '删除搜索历史失败');
       }
     } catch (e) {
-      // 如果接口调用异常，恢复缓存
-      refreshSearchHistoryInBackground(context);
       return DataOperationResult.error('删除搜索历史异常: ${e.toString()}');
     }
   }
@@ -491,17 +445,11 @@ class PageCacheService implements PlayRecordOperationInterface, FavoriteOperatio
     try {
       final response = await ApiService.clearSearchHistory(context);
       if (response.success) {
-        // 异步刷新缓存
-        refreshSearchHistoryInBackground(context);
         return DataOperationResult.success(null);
       } else {
-        // 如果接口调用失败，恢复缓存
-        refreshSearchHistoryInBackground(context);
         return DataOperationResult.error(response.message ?? '清空搜索历史失败');
       }
     } catch (e) {
-      // 如果接口调用异常，恢复缓存
-      refreshSearchHistoryInBackground(context);
       return DataOperationResult.error('清空搜索历史异常: ${e.toString()}');
     }
   }
@@ -509,14 +457,7 @@ class PageCacheService implements PlayRecordOperationInterface, FavoriteOperatio
 
   @override
   void refreshSearchHistoryInBackground(BuildContext context) {
-    // 异步执行，不等待结果
-    Future.microtask(() async {
-      try {
-        await refreshSearchHistory(context);
-      } catch (e) {
-        // 静默处理错误，不影响主流程
-      }
-    });
+    // 按需调用时手动刷新；默认不做异步刷新
   }
 
 
@@ -529,8 +470,7 @@ class PageCacheService implements PlayRecordOperationInterface, FavoriteOperatio
     // 先检查缓存
     final cachedData = getCache<List<DoubanMovie>>(cacheKey);
     if (cachedData != null) {
-      // 有缓存数据，立即返回，同时异步刷新缓存
-      refreshHotMoviesInBackground(context);
+      // 有缓存数据，直接返回
       return cachedData;
     }
 
@@ -559,13 +499,7 @@ class PageCacheService implements PlayRecordOperationInterface, FavoriteOperatio
 
   /// 异步刷新热门电影缓存
   void refreshHotMoviesInBackground(BuildContext context) {
-    Future.microtask(() async {
-      try {
-        await getHotMoviesDirect(context);
-      } catch (e) {
-        // 静默处理错误，不影响主流程
-      }
-    });
+    // 移除异步刷新行为
   }
 
   /// 获取热门剧集（优先走缓存并异步刷新）
@@ -575,8 +509,7 @@ class PageCacheService implements PlayRecordOperationInterface, FavoriteOperatio
     // 先检查缓存
     final cachedData = getCache<List<DoubanMovie>>(cacheKey);
     if (cachedData != null) {
-      // 有缓存数据，立即返回，同时异步刷新缓存
-      refreshHotTvShowsInBackground(context);
+      // 有缓存数据，直接返回
       return cachedData;
     }
 
@@ -605,13 +538,7 @@ class PageCacheService implements PlayRecordOperationInterface, FavoriteOperatio
 
   /// 异步刷新热门剧集缓存
   void refreshHotTvShowsInBackground(BuildContext context) {
-    Future.microtask(() async {
-      try {
-        await getHotTvShowsDirect(context);
-      } catch (e) {
-        // 静默处理错误，不影响主流程
-      }
-    });
+    // 移除异步刷新行为
   }
 
   /// 获取新番放送数据（优先走缓存并异步刷新）
@@ -621,9 +548,25 @@ class PageCacheService implements PlayRecordOperationInterface, FavoriteOperatio
     // 先检查缓存
     final cachedData = getCache<List<BangumiItem>>(cacheKey);
     if (cachedData != null) {
-      // 有缓存数据，立即返回，同时异步刷新缓存
-      refreshBangumiCalendarInBackground(context);
+      // 有缓存数据，直接返回
       return cachedData;
+    }
+
+    // 尝试从持久化缓存读取（一天），函数级缓存：保存已处理后的 BangumiItem 列表
+    try {
+      final persisted = await DoubanCacheService().get<List<BangumiItem>>(
+        'bangumi_calendar_v2',
+        (raw) => (raw as List<dynamic>)
+            .map((m) => BangumiItem.fromJson(m as Map<String, dynamic>))
+            .toList(),
+      );
+
+      if (persisted != null && persisted.isNotEmpty) {
+        setCache(cacheKey, persisted);
+        return persisted;
+      }
+    } catch (e) {
+      // 静默忽略持久化缓存读取错误
     }
 
     // 缓存未命中，直接走接口并保存到缓存
@@ -667,8 +610,18 @@ class PageCacheService implements PlayRecordOperationInterface, FavoriteOperatio
         }
 
         if (currentDayData != null) {
-          // 缓存数据
+          // 写入内存缓存
           setCache(cacheKey, currentDayData.items);
+          
+          // 写入持久化缓存（函数级）：保存已处理后的 BangumiItem 列表
+          try {
+            await DoubanCacheService().set(
+              'bangumi_calendar_v2',
+              currentDayData.items.map((e) => e.toJson()).toList(),
+              const Duration(days: 1),
+            );
+          } catch (_) {}
+
           return currentDayData.items;
         }
       }
@@ -681,13 +634,7 @@ class PageCacheService implements PlayRecordOperationInterface, FavoriteOperatio
 
   /// 异步刷新新番放送缓存
   void refreshBangumiCalendarInBackground(BuildContext context) {
-    Future.microtask(() async {
-      try {
-        await getBangumiCalendarDirect(context);
-      } catch (e) {
-        // 静默处理错误，不影响主流程
-      }
-    });
+    // 移除异步刷新行为
   }
 
   /// 获取热门综艺数据（优先走缓存并异步刷新）
@@ -697,8 +644,7 @@ class PageCacheService implements PlayRecordOperationInterface, FavoriteOperatio
     // 先检查缓存
     final cachedData = getCache<List<DoubanMovie>>(cacheKey);
     if (cachedData != null) {
-      // 有缓存数据，立即返回，同时异步刷新缓存
-      refreshHotShowsInBackground(context);
+      // 有缓存数据，直接返回
       return cachedData;
     }
 
@@ -727,12 +673,6 @@ class PageCacheService implements PlayRecordOperationInterface, FavoriteOperatio
 
   /// 异步刷新热门综艺缓存
   void refreshHotShowsInBackground(BuildContext context) {
-    Future.microtask(() async {
-      try {
-        await getHotShowsDirect(context);
-      } catch (e) {
-        // 静默处理错误，不影响主流程
-      }
-    });
+    // 移除异步刷新行为
   }
 }
