@@ -44,7 +44,7 @@ class DoubanRequestParams {
     required this.kind,
     required this.category,
     required this.type,
-    this.pageLimit = 20,
+    this.pageLimit = 25,
     this.page = 0,
   });
 
@@ -85,7 +85,7 @@ class DoubanService {
     required String kind,
     required String category,
     required String type,
-    int pageLimit = 20,
+    int pageLimit = 25,
     int page = 0,
   }) async {
     // 初始化缓存服务
@@ -173,7 +173,7 @@ class DoubanService {
   /// 获取热门电影数据
   static Future<ApiResponse<List<DoubanMovie>>> getHotMovies(
     BuildContext context, {
-    int pageLimit = 20,
+    int pageLimit = 25,
     int page = 0,
   }) async {
     return getCategoryData(
@@ -189,13 +189,13 @@ class DoubanService {
   /// 获取热门剧集数据
   static Future<ApiResponse<List<DoubanMovie>>> getHotTvShows(
     BuildContext context, {
-    int pageLimit = 20,
+    int pageLimit = 25,
     int page = 0,
   }) async {
     return getCategoryData(
       context,
       kind: 'tv',
-      category: 'tv',
+      category: '最近热门',
       type: 'tv',
       pageLimit: pageLimit,
       page: page,
@@ -205,7 +205,7 @@ class DoubanService {
   /// 获取热门综艺数据
   static Future<ApiResponse<List<DoubanMovie>>> getHotShows(
     BuildContext context, {
-    int pageLimit = 20,
+    int pageLimit = 25,
     int page = 0,
   }) async {
     return getCategoryData(
@@ -306,7 +306,6 @@ class DoubanService {
     if (platform.isNotEmpty) {
       tags.add(platform);
     }
-    print('tags: $tags');
 
     // 构建API URL
     final baseUrl = 'https://m.douban.cmliussss.net/rexxar/api/v2/${params.kind}/recommend';
@@ -328,8 +327,6 @@ class DoubanService {
 
     final uri = Uri.parse(baseUrl).replace(queryParameters: queryParams);
     final target = uri.toString();
-
-    print('豆瓣推荐API请求URL: $target');
 
     try {
       final response = await http.get(

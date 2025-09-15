@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/douban_movie.dart';
 import '../models/play_record.dart';
 import '../models/video_info.dart';
-import '../services/page_cache_service.dart';
+import '../services/douban_service.dart';
 import '../widgets/video_menu_bottom_sheet.dart';
 import 'recommendation_section.dart';
 
@@ -32,7 +32,7 @@ class _HotTvSectionState extends State<HotTvSection> {
   List<DoubanMovie> _tvShows = [];
   bool _isLoading = true;
   bool _hasError = false;
-  final PageCacheService _cacheService = PageCacheService();
+  
   
   // 静态变量存储当前实例
   static _HotTvSectionState? _currentInstance;
@@ -53,12 +53,12 @@ class _HotTvSectionState extends State<HotTvSection> {
         _hasError = false;
       });
 
-      // 使用缓存服务获取数据
-      final tvShows = await _cacheService.getHotTvShows(context);
+      // 直接调用 DoubanService（内部已做函数级缓存）
+      final result = await DoubanService.getHotTvShows(context);
 
-      if (tvShows != null) {
+      if (result.success && result.data != null) {
         setState(() {
-          _tvShows = tvShows;
+          _tvShows = result.data!;
           _isLoading = false;
         });
       } else {

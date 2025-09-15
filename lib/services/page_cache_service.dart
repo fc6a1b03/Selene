@@ -1,14 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
 import '../models/douban_movie.dart';
 import '../models/play_record.dart';
-import '../models/bangumi.dart';
 import '../models/favorite_item.dart';
 import 'api_service.dart';
 import 'douban_service.dart';
 import 'data_operation_interface.dart';
-import 'douban_cache_service.dart';
+ 
 
 /// 页面缓存服务 - 单例模式
 class PageCacheService implements PlayRecordOperationInterface, FavoriteOperationInterface, SearchRecordOperationInterface {
@@ -541,101 +538,7 @@ class PageCacheService implements PlayRecordOperationInterface, FavoriteOperatio
     // 移除异步刷新行为
   }
 
-  /// 获取新番放送数据（优先走缓存并异步刷新）
-  Future<List<BangumiItem>?> getBangumiCalendar(BuildContext context) async {
-    const cacheKey = 'bangumi_calendar';
-    
-    // 先检查缓存
-    final cachedData = getCache<List<BangumiItem>>(cacheKey);
-    if (cachedData != null) {
-      // 有缓存数据，直接返回
-      return cachedData;
-    }
-
-    // 尝试从持久化缓存读取（一天），函数级缓存：保存已处理后的 BangumiItem 列表
-    try {
-      final persisted = await DoubanCacheService().get<List<BangumiItem>>(
-        'bangumi_calendar_v2',
-        (raw) => (raw as List<dynamic>)
-            .map((m) => BangumiItem.fromJson(m as Map<String, dynamic>))
-            .toList(),
-      );
-
-      if (persisted != null && persisted.isNotEmpty) {
-        setCache(cacheKey, persisted);
-        return persisted;
-      }
-    } catch (e) {
-      // 静默忽略持久化缓存读取错误
-    }
-
-    // 缓存未命中，直接走接口并保存到缓存
-    return await getBangumiCalendarDirect(context);
-  }
-
-  /// 直接走接口并保存到缓存
-  Future<List<BangumiItem>?> getBangumiCalendarDirect(BuildContext context) async {
-    const cacheKey = 'bangumi_calendar';
-    
-    try {
-      const apiUrl = 'https://api.bgm.tv/calendar';
-      final headers = {
-        'User-Agent': 'senshinya/selene/1.0.0 (Android) (http://github.com/senshinya/selene)',
-        'Accept': 'application/json',
-      };
-
-      final response = await http.get(
-        Uri.parse(apiUrl),
-        headers: headers,
-      ).timeout(const Duration(seconds: 30));
-
-      if (response.statusCode == 200) {
-        final List<dynamic> responseData = json.decode(response.body);
-        
-        // 解析所有星期数据
-        final List<BangumiCalendarResponse> calendarData = responseData
-            .map((item) => BangumiCalendarResponse.fromJson(item as Map<String, dynamic>))
-            .toList();
-        
-        // 获取当前星期几的数据
-        final now = DateTime.now();
-        final currentWeekday = now.weekday;
-        BangumiCalendarResponse? currentDayData;
-        
-        for (final dayData in calendarData) {
-          if (dayData.weekday.id == currentWeekday) {
-            currentDayData = dayData;
-            break;
-          }
-        }
-
-        if (currentDayData != null) {
-          // 写入内存缓存
-          setCache(cacheKey, currentDayData.items);
-          
-          // 写入持久化缓存（函数级）：保存已处理后的 BangumiItem 列表
-          try {
-            await DoubanCacheService().set(
-              'bangumi_calendar_v2',
-              currentDayData.items.map((e) => e.toJson()).toList(),
-              const Duration(days: 1),
-            );
-          } catch (_) {}
-
-          return currentDayData.items;
-        }
-      }
-    } catch (e) {
-      // 错误处理
-    }
-    
-    return null;
-  }
-
-  /// 异步刷新新番放送缓存
-  void refreshBangumiCalendarInBackground(BuildContext context) {
-    // 移除异步刷新行为
-  }
+  // 移除 Bangumi 的页面级缓存逻辑，改由 BangumiService 负责
 
   /// 获取热门综艺数据（优先走缓存并异步刷新）
   Future<List<DoubanMovie>?> getHotShows(BuildContext context) async {

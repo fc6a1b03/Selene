@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/bangumi.dart';
 import '../models/play_record.dart';
 import '../models/video_info.dart';
-import '../services/page_cache_service.dart';
+import '../services/bangumi_service.dart';
 import 'recommendation_section.dart';
 import 'video_menu_bottom_sheet.dart';
 
@@ -32,7 +32,7 @@ class _BangumiSectionState extends State<BangumiSection> {
   List<BangumiItem> _bangumiItems = [];
   bool _isLoading = true;
   bool _hasError = false;
-  final PageCacheService _cacheService = PageCacheService();
+  
   
   // 静态变量存储当前实例
   static _BangumiSectionState? _currentInstance;
@@ -53,12 +53,12 @@ class _BangumiSectionState extends State<BangumiSection> {
         _hasError = false;
       });
 
-      // 使用缓存服务获取数据
-      final bangumiItems = await _cacheService.getBangumiCalendar(context);
+      // 直接调用 BangumiService（内部函数级缓存）
+      final result = await BangumiService.getTodayCalendar(context);
 
-      if (bangumiItems != null) {
+      if (result.success && result.data != null) {
         setState(() {
-          _bangumiItems = bangumiItems;
+          _bangumiItems = result.data!;
           _isLoading = false;
         });
       } else {
