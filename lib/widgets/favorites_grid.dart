@@ -1,13 +1,11 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:provider/provider.dart';
 import '../models/favorite_item.dart';
 import '../widgets/video_card.dart';
 import '../models/play_record.dart';
 import '../models/video_info.dart';
 import '../services/page_cache_service.dart';
-import '../services/theme_service.dart';
 import 'video_menu_bottom_sheet.dart';
 import 'shimmer_effect.dart';
 

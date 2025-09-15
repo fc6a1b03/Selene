@@ -206,6 +206,7 @@ class DoubanService {
     if (platform.isNotEmpty) {
       tags.add(platform);
     }
+    print('tags: $tags');
 
     // 构建API URL
     final baseUrl = 'https://m.douban.cmliussss.net/rexxar/api/v2/${params.kind}/recommend';
@@ -227,6 +228,8 @@ class DoubanService {
 
     final uri = Uri.parse(baseUrl).replace(queryParameters: queryParams);
     final target = uri.toString();
+
+    print('豆瓣推荐API请求URL: $target');
 
     try {
       final response = await http.get(

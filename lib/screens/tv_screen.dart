@@ -257,6 +257,7 @@ class _TvScreenState extends State<TvScreen> {
       final params = DoubanRecommendsParams(
         kind: 'tv',
         category: categoryValue,
+        format: '电视剧',
         region: regionValue,
         year: yearValue,
         sort: _selectedTvSort,
@@ -377,6 +378,7 @@ class _TvScreenState extends State<TvScreen> {
       final params = DoubanRecommendsParams(
         kind: 'tv',
         category: categoryValue,
+        format: '电视剧',
         region: regionValue,
         year: yearValue,
         sort: _selectedTvSort,
