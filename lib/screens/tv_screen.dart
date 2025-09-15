@@ -232,6 +232,7 @@ class _TvScreenState extends State<TvScreen> {
       String categoryValue = _selectedTvType;
       String regionValue = _selectedTvRegion;
       String yearValue = _selectedTvYear;
+      String platformValue = _selectedTvPlatform;
       
       // 转换地区参数为中文标签
       if (regionValue != 'all') {
@@ -253,6 +254,12 @@ class _TvScreenState extends State<TvScreen> {
             .firstWhere((e) => e.value == categoryValue)
             .label;
       }
+      // 转换平台参数为中文标签
+      if (platformValue != 'all') {
+        platformValue = _tvPlatformOptions
+            .firstWhere((e) => e.value == platformValue)
+            .label;
+      }
       
       final params = DoubanRecommendsParams(
         kind: 'tv',
@@ -260,6 +267,7 @@ class _TvScreenState extends State<TvScreen> {
         format: '电视剧',
         region: regionValue,
         year: yearValue,
+        platform: platformValue,
         sort: _selectedTvSort,
         pageLimit: _pageLimit,
         page: _page,
@@ -353,6 +361,7 @@ class _TvScreenState extends State<TvScreen> {
       String categoryValue = _selectedTvType;
       String regionValue = _selectedTvRegion;
       String yearValue = _selectedTvYear;
+      String platformValue = _selectedTvPlatform;
       
       // 转换地区参数为中文标签
       if (regionValue != 'all') {
@@ -374,6 +383,12 @@ class _TvScreenState extends State<TvScreen> {
             .firstWhere((e) => e.value == categoryValue)
             .label;
       }
+      // 转换平台参数为中文标签
+      if (platformValue != 'all') {
+        platformValue = _tvPlatformOptions
+            .firstWhere((e) => e.value == platformValue)
+            .label;
+      }
       
       final params = DoubanRecommendsParams(
         kind: 'tv',
@@ -381,6 +396,7 @@ class _TvScreenState extends State<TvScreen> {
         format: '电视剧',
         region: regionValue,
         year: yearValue,
+        platform: platformValue,
         sort: _selectedTvSort,
         pageLimit: _pageLimit,
         page: _page,
@@ -607,32 +623,34 @@ class _TvScreenState extends State<TvScreen> {
             color: Theme.of(context).textTheme.bodyMedium?.color,
           ),
         ),
-        const SizedBox(height: 6), // 减少间距
+        const SizedBox(height: 6),
         Expanded(
-          child: Row(
-            children: [
-              _buildFilterPill('类型', _tvTypeOptions, _selectedTvType, (v) {
-                setState(() => _selectedTvType = v);
-                _fetchTvShows(isRefresh: true);
-              }),
-              _buildFilterPill('地区', _tvRegionOptions, _selectedTvRegion,
-                  (v) {
-                setState(() => _selectedTvRegion = v);
-                _fetchTvShows(isRefresh: true);
-              }),
-              _buildFilterPill('年代', _tvYearOptions, _selectedTvYear, (v) {
-                setState(() => _selectedTvYear = v);
-                _fetchTvShows(isRefresh: true);
-              }),
-              _buildFilterPill('平台', _tvPlatformOptions, _selectedTvPlatform, (v) {
-                setState(() => _selectedTvPlatform = v);
-                _fetchTvShows(isRefresh: true);
-              }),
-              _buildFilterPill('排序', _tvSortOptions, _selectedTvSort, (v) {
-                setState(() => _selectedTvSort = v);
-                _fetchTvShows(isRefresh: true);
-              }),
-            ],
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                _buildFilterPill('类型', _tvTypeOptions, _selectedTvType, (v) {
+                  setState(() => _selectedTvType = v);
+                  _fetchTvShows(isRefresh: true);
+                }),
+                _buildFilterPill('地区', _tvRegionOptions, _selectedTvRegion, (v) {
+                  setState(() => _selectedTvRegion = v);
+                  _fetchTvShows(isRefresh: true);
+                }),
+                _buildFilterPill('年代', _tvYearOptions, _selectedTvYear, (v) {
+                  setState(() => _selectedTvYear = v);
+                  _fetchTvShows(isRefresh: true);
+                }),
+                _buildFilterPill('平台', _tvPlatformOptions, _selectedTvPlatform, (v) {
+                  setState(() => _selectedTvPlatform = v);
+                  _fetchTvShows(isRefresh: true);
+                }),
+                _buildFilterPill('排序', _tvSortOptions, _selectedTvSort, (v) {
+                  setState(() => _selectedTvSort = v);
+                  _fetchTvShows(isRefresh: true);
+                }),
+              ],
+            ),
           ),
         ),
       ],

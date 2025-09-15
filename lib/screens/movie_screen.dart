@@ -590,28 +590,30 @@ class _MovieScreenState extends State<MovieScreen> {
             color: Theme.of(context).textTheme.bodyMedium?.color,
           ),
         ),
-        const SizedBox(height: 6), // 减少间距
+        const SizedBox(height: 6),
         Expanded(
-          child: Row(
-            children: [
-              _buildFilterPill('类型', _movieTypeOptions, _selectedMovieType, (v) {
-                setState(() => _selectedMovieType = v);
-                _fetchMovies(isRefresh: true);
-              }),
-              _buildFilterPill('地区', _movieRegionOptions, _selectedMovieRegion,
-                  (v) {
-                setState(() => _selectedMovieRegion = v);
-                _fetchMovies(isRefresh: true);
-              }),
-              _buildFilterPill('年代', _movieYearOptions, _selectedMovieYear, (v) {
-                setState(() => _selectedMovieYear = v);
-                _fetchMovies(isRefresh: true);
-              }),
-              _buildFilterPill('排序', _movieSortOptions, _selectedMovieSort, (v) {
-                setState(() => _selectedMovieSort = v);
-                _fetchMovies(isRefresh: true);
-              }),
-            ],
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                _buildFilterPill('类型', _movieTypeOptions, _selectedMovieType, (v) {
+                  setState(() => _selectedMovieType = v);
+                  _fetchMovies(isRefresh: true);
+                }),
+                _buildFilterPill('地区', _movieRegionOptions, _selectedMovieRegion, (v) {
+                  setState(() => _selectedMovieRegion = v);
+                  _fetchMovies(isRefresh: true);
+                }),
+                _buildFilterPill('年代', _movieYearOptions, _selectedMovieYear, (v) {
+                  setState(() => _selectedMovieYear = v);
+                  _fetchMovies(isRefresh: true);
+                }),
+                _buildFilterPill('排序', _movieSortOptions, _selectedMovieSort, (v) {
+                  setState(() => _selectedMovieSort = v);
+                  _fetchMovies(isRefresh: true);
+                }),
+              ],
+            ),
           ),
         ),
       ],
