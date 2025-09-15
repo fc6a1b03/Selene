@@ -2,113 +2,41 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../models/douban_movie.dart';
 import '../models/play_record.dart';
-import '../services/theme_service.dart';
 import 'video_card.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:provider/provider.dart';
 import 'video_menu_bottom_sheet.dart';
 import '../models/video_info.dart';
 import 'shimmer_effect.dart';
 
-class DoubanMoviesGrid extends StatefulWidget {
-  final String category;
-  final String region;
+class DoubanMoviesGrid extends StatelessWidget {
+  final List<DoubanMovie>? movies;
+  final bool isLoading;
+  final String? errorMessage;
   final Function(PlayRecord) onVideoTap;
   final Function(VideoInfo, VideoMenuAction)? onGlobalMenuAction;
+  final String contentType; // 'movie' 或 'tv'
 
   const DoubanMoviesGrid({
     super.key,
-    required this.category,
-    required this.region,
+    this.movies,
+    this.isLoading = false,
+    this.errorMessage,
     required this.onVideoTap,
     this.onGlobalMenuAction,
+    this.contentType = 'movie', // 默认为电影
   });
-
-  static void setContent(List<DoubanMovie> movies) {
-    _DoubanMoviesGridState._currentInstance?._setContent(movies);
-  }
-
-  static void appendContent(List<DoubanMovie> movies) {
-    _DoubanMoviesGridState._currentInstance?._appendContent(movies);
-  }
-
-  static void showLoading() {
-    _DoubanMoviesGridState._currentInstance?._showLoading();
-  }
-
-  static void setError(String message) {
-    _DoubanMoviesGridState._currentInstance?._setError(message);
-  }
-
-  @override
-  State<DoubanMoviesGrid> createState() => _DoubanMoviesGridState();
-}
-
-class _DoubanMoviesGridState extends State<DoubanMoviesGrid>
-    with TickerProviderStateMixin {
-  List<DoubanMovie> _movies = [];
-  bool _isLoading = true;
-  String? _errorMessage;
-
-  static _DoubanMoviesGridState? _currentInstance;
-
-  @override
-  void initState() {
-    super.initState();
-    _currentInstance = this;
-  }
-
-  @override
-  void dispose() {
-    if (_currentInstance == this) {
-      _currentInstance = null;
-    }
-    super.dispose();
-  }
-
-  void _setContent(List<DoubanMovie> movies) {
-    if (!mounted) return;
-    setState(() {
-      _movies = movies;
-      _isLoading = false;
-      _errorMessage = null;
-    });
-  }
-
-  void _appendContent(List<DoubanMovie> movies) {
-    if (!mounted) return;
-    setState(() {
-      _movies.addAll(movies);
-    });
-  }
-
-  void _showLoading() {
-    if (!mounted) return;
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
-  }
-
-  void _setError(String message) {
-    if (!mounted) return;
-    setState(() {
-      _isLoading = false;
-      _errorMessage = message;
-    });
-  }
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) {
+    if (isLoading && (movies == null || movies!.isEmpty)) {
       return _buildLoadingState();
     }
 
-    if (_errorMessage != null) {
+    if (errorMessage != null) {
       return _buildErrorState();
     }
 
-    if (_movies.isEmpty) {
+    if (movies == null || movies!.isEmpty) {
       return _buildEmptyState();
     }
 
@@ -193,7 +121,7 @@ class _DoubanMoviesGridState extends State<DoubanMoviesGrid>
           ),
           const SizedBox(height: 12),
           Text(
-            _errorMessage ?? '未知错误',
+            errorMessage ?? '未知错误',
             style: GoogleFonts.poppins(
               fontSize: 14,
               color: const Color(0xFF95a5a6),
@@ -206,18 +134,21 @@ class _DoubanMoviesGridState extends State<DoubanMoviesGrid>
   }
 
   Widget _buildEmptyState() {
+    final bool isMovie = contentType == 'movie';
+    final String contentName = isMovie ? '电影' : '剧集';
+    
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(
-            Icons.movie_filter_outlined,
+          Icon(
+            isMovie ? Icons.movie_filter_outlined : Icons.tv_outlined,
             size: 80,
-            color: Color(0xFFbdc3c7),
+            color: const Color(0xFFbdc3c7),
           ),
           const SizedBox(height: 24),
           Text(
-            '暂无电影',
+            '暂无$contentName',
             style: GoogleFonts.poppins(
               fontSize: 18,
               fontWeight: FontWeight.w500,
@@ -226,7 +157,7 @@ class _DoubanMoviesGridState extends State<DoubanMoviesGrid>
           ),
           const SizedBox(height: 12),
           Text(
-            '当前分类下没有电影',
+            '当前分类下没有$contentName',
             style: GoogleFonts.poppins(
               fontSize: 14,
               color: const Color(0xFF95a5a6),
@@ -259,17 +190,17 @@ class _DoubanMoviesGridState extends State<DoubanMoviesGrid>
             crossAxisSpacing: spacing,
             mainAxisSpacing: 6,
           ),
-          itemCount: _movies.length,
+          itemCount: movies!.length,
           itemBuilder: (context, index) {
-            final movie = _movies[index];
+            final movie = movies![index];
             final videoInfo = movie.toVideoInfo();
             
             return VideoCard(
               videoInfo: videoInfo,
-              onTap: () => widget.onVideoTap(movie.toPlayRecord()),
+              onTap: () => onVideoTap(movie.toPlayRecord()),
               from: 'douban',
               cardWidth: itemWidth,
-              onGlobalMenuAction: widget.onGlobalMenuAction != null ? (action) => widget.onGlobalMenuAction!(videoInfo, action) : null,
+              onGlobalMenuAction: onGlobalMenuAction != null ? (action) => onGlobalMenuAction!(videoInfo, action) : null,
               isFavorited: false, 
             );
           },

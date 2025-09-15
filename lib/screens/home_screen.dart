@@ -14,7 +14,7 @@ import '../widgets/custom_refresh_indicator.dart';
 import '../models/play_record.dart';
 import '../models/video_info.dart';
 import '../services/page_cache_service.dart';
-import 'movies_screen.dart';
+import 'movie_screen.dart';
 import 'tv_screen.dart';
 import 'anime_screen.dart';
 import 'show_screen.dart';
@@ -225,9 +225,9 @@ class _HomeScreenState extends State<HomeScreen> {
       case 0:
         return _buildHomeContentForTab(_selectedTopTab);
       case 1:
-        return const MoviesScreen();
+        return const MovieScreen();
       case 2:
-        return const TVScreen();
+        return const TvScreen();
       case 3:
         return const FavoritesScreen();
       case 4:

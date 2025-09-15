@@ -20,84 +20,85 @@ class SelectorOption {
   const SelectorOption({required this.label, required this.value});
 }
 
-class TvScreen extends StatefulWidget {
-  const TvScreen({super.key});
+class MovieScreen extends StatefulWidget {
+  const MovieScreen({super.key});
 
   @override
-  State<TvScreen> createState() => _TvScreenState();
+  State<MovieScreen> createState() => _MovieScreenState();
 }
 
-class _TvScreenState extends State<TvScreen> {
-  // 电视剧一级选择器选项
-  final List<SelectorOption> _tvPrimaryOptions = const [
+class _MovieScreenState extends State<MovieScreen> {
+  // 电影的一级选择器选项
+  final List<SelectorOption> _moviePrimaryOptions = const [
     SelectorOption(label: '全部', value: '全部'),
-    SelectorOption(label: '最近热门', value: '最近热门'),
+    SelectorOption(label: '热门电影', value: '热门'),
+    SelectorOption(label: '最新电影', value: '最新'),
+    SelectorOption(label: '豆瓣高分', value: '豆瓣高分'),
+    SelectorOption(label: '冷门佳片', value: '冷门佳片'),
   ];
 
-  // 电视剧二级选择器选项
-  final List<SelectorOption> _tvSecondaryOptions = const [
-    SelectorOption(label: '全部', value: 'tv'),
-    SelectorOption(label: '国产', value: 'tv_domestic'),
-    SelectorOption(label: '欧美', value: 'tv_american'),
-    SelectorOption(label: '日本', value: 'tv_japanese'),
-    SelectorOption(label: '韩国', value: 'tv_korean'),
-    SelectorOption(label: '动漫', value: 'tv_animation'),
-    SelectorOption(label: '纪录片', value: 'tv_documentary'),
+  // 电影的二级选择器选项 (旧版)
+  final List<SelectorOption> _movieSecondaryOptions = const [
+    SelectorOption(label: '全部', value: '全部'),
+    SelectorOption(label: '华语', value: '华语'),
+    SelectorOption(label: '欧美', value: '欧美'),
+    SelectorOption(label: '韩国', value: '韩国'),
+    SelectorOption(label: '日本', value: '日本'),
   ];
 
-  // 新的筛选选项 - 类型
-  final List<SelectorOption> _tvTypeOptions = const [
+  // 新的筛选选项
+  final List<SelectorOption> _movieTypeOptions = const [
     SelectorOption(label: '全部', value: 'all'),
     SelectorOption(label: '喜剧', value: 'comedy'),
     SelectorOption(label: '爱情', value: 'romance'),
-    SelectorOption(label: '悬疑', value: 'suspense'),
-    SelectorOption(label: '武侠', value: 'wuxia'),
-    SelectorOption(label: '古装', value: 'costume'),
-    SelectorOption(label: '家庭', value: 'family'),
-    SelectorOption(label: '犯罪', value: 'crime'),
-    SelectorOption(label: '科幻', value: 'sci-fi'),
-    SelectorOption(label: '恐怖', value: 'horror'),
-    SelectorOption(label: '历史', value: 'history'),
-    SelectorOption(label: '战争', value: 'war'),
     SelectorOption(label: '动作', value: 'action'),
-    SelectorOption(label: '冒险', value: 'adventure'),
-    SelectorOption(label: '传记', value: 'biography'),
-    SelectorOption(label: '剧情', value: 'drama'),
-    SelectorOption(label: '奇幻', value: 'fantasy'),
+    SelectorOption(label: '科幻', value: 'sci-fi'),
+    SelectorOption(label: '悬疑', value: 'suspense'),
+    SelectorOption(label: '犯罪', value: 'crime'),
     SelectorOption(label: '惊悚', value: 'thriller'),
-    SelectorOption(label: '灾难', value: 'disaster'),
-    SelectorOption(label: '歌舞', value: 'musical'),
+    SelectorOption(label: '冒险', value: 'adventure'),
     SelectorOption(label: '音乐', value: 'music'),
+    SelectorOption(label: '历史', value: 'history'),
+    SelectorOption(label: '奇幻', value: 'fantasy'),
+    SelectorOption(label: '恐怖', value: 'horror'),
+    SelectorOption(label: '战争', value: 'war'),
+    SelectorOption(label: '传记', value: 'biography'),
+    SelectorOption(label: '歌舞', value: 'musical'),
+    SelectorOption(label: '武侠', value: 'wuxia'),
+    SelectorOption(label: '情色', value: 'erotic'),
+    SelectorOption(label: '灾难', value: 'disaster'),
+    SelectorOption(label: '西部', value: 'western'),
+    SelectorOption(label: '纪录片', value: 'documentary'),
+    SelectorOption(label: '短片', value: 'short'),
   ];
 
-  final List<SelectorOption> _tvRegionOptions = const [
+  final List<SelectorOption> _movieRegionOptions = const [
     SelectorOption(label: '全部', value: 'all'),
     SelectorOption(label: '华语', value: 'chinese'),
     SelectorOption(label: '欧美', value: 'western'),
-    SelectorOption(label: '国外', value: 'foreign'),
     SelectorOption(label: '韩国', value: 'korean'),
     SelectorOption(label: '日本', value: 'japanese'),
     SelectorOption(label: '中国大陆', value: 'mainland_china'),
-    SelectorOption(label: '中国香港', value: 'hong_kong'),
     SelectorOption(label: '美国', value: 'usa'),
-    SelectorOption(label: '英国', value: 'uk'),
-    SelectorOption(label: '泰国', value: 'thailand'),
+    SelectorOption(label: '中国香港', value: 'hong_kong'),
     SelectorOption(label: '中国台湾', value: 'taiwan'),
-    SelectorOption(label: '意大利', value: 'italy'),
+    SelectorOption(label: '英国', value: 'uk'),
     SelectorOption(label: '法国', value: 'france'),
     SelectorOption(label: '德国', value: 'germany'),
+    SelectorOption(label: '意大利', value: 'italy'),
     SelectorOption(label: '西班牙', value: 'spain'),
+    SelectorOption(label: '印度', value: 'india'),
+    SelectorOption(label: '泰国', value: 'thailand'),
     SelectorOption(label: '俄罗斯', value: 'russia'),
+    SelectorOption(label: '加拿大', value: 'canada'),
+    SelectorOption(label: '澳大利亚', value: 'australia'),
+    SelectorOption(label: '爱尔兰', value: 'ireland'),
     SelectorOption(label: '瑞典', value: 'sweden'),
     SelectorOption(label: '巴西', value: 'brazil'),
     SelectorOption(label: '丹麦', value: 'denmark'),
-    SelectorOption(label: '印度', value: 'india'),
-    SelectorOption(label: '加拿大', value: 'canada'),
-    SelectorOption(label: '爱尔兰', value: 'ireland'),
-    SelectorOption(label: '澳大利亚', value: 'australia'),
   ];
 
-  final List<SelectorOption> _tvYearOptions = const [
+  final List<SelectorOption> _movieYearOptions = const [
     SelectorOption(label: '全部', value: 'all'),
     SelectorOption(label: '2020年代', value: '2020s'),
     SelectorOption(label: '2025', value: '2025'),
@@ -116,40 +117,24 @@ class _TvScreenState extends State<TvScreen> {
     SelectorOption(label: '更早', value: 'earlier'),
   ];
 
-  final List<SelectorOption> _tvPlatformOptions = const [
-    SelectorOption(label: '全部', value: 'all'),
-    SelectorOption(label: '腾讯视频', value: 'tencent'),
-    SelectorOption(label: '爱奇艺', value: 'iqiyi'),
-    SelectorOption(label: '优酷', value: 'youku'),
-    SelectorOption(label: '湖南卫视', value: 'hunan_tv'),
-    SelectorOption(label: 'Netflix', value: 'netflix'),
-    SelectorOption(label: 'HBO', value: 'hbo'),
-    SelectorOption(label: 'BBC', value: 'bbc'),
-    SelectorOption(label: 'NHK', value: 'nhk'),
-    SelectorOption(label: 'CBS', value: 'cbs'),
-    SelectorOption(label: 'NBC', value: 'nbc'),
-    SelectorOption(label: 'tvN', value: 'tvn'),
-  ];
-
-  final List<SelectorOption> _tvSortOptions = const [
+  final List<SelectorOption> _movieSortOptions = const [
     SelectorOption(label: '综合排序', value: 'T'),
     SelectorOption(label: '近期热度', value: 'U'),
-    SelectorOption(label: '首播时间', value: 'R'),
+    SelectorOption(label: '首映时间', value: 'R'),
     SelectorOption(label: '高分优先', value: 'S'),
   ];
 
-  String _selectedCategoryValue = '最近热门'; // 默认选中最近热门
-  String _selectedRegionValue = 'tv'; // 二级筛选默认选中全部
+  String _selectedCategoryValue = '热门';
+  String _selectedRegionValue = '全部'; // 旧版地区筛选
 
   // 新版筛选状态
-  String _selectedTvType = 'all';
-  String _selectedTvRegion = 'all';
-  String _selectedTvYear = 'all';
-  String _selectedTvPlatform = 'all';
-  String _selectedTvSort = 'T';
+  String _selectedMovieType = 'all';
+  String _selectedMovieRegion = 'all';
+  String _selectedMovieYear = 'all';
+  String _selectedMovieSort = 'T';
 
   final ScrollController _scrollController = ScrollController();
-  final List<DoubanMovie> _tvShows = [];
+  final List<DoubanMovie> _movies = [];
   int _page = 0;
   final int _pageLimit = 25;
   bool _isLoading = false;
@@ -159,13 +144,13 @@ class _TvScreenState extends State<TvScreen> {
 
   /// 获取当前筛选状态
   String _getCurrentFilterState() {
-    return '$_selectedCategoryValue|$_selectedRegionValue|$_selectedTvType|$_selectedTvRegion|$_selectedTvYear|$_selectedTvPlatform|$_selectedTvSort';
+    return '$_selectedCategoryValue|$_selectedRegionValue|$_selectedMovieType|$_selectedMovieRegion|$_selectedMovieYear|$_selectedMovieSort';
   }
 
   @override
   void initState() {
     super.initState();
-    _fetchTvShows(isRefresh: true);
+    _fetchMovies(isRefresh: true);
     _scrollController.addListener(() {
       _handleScroll();
     });
@@ -185,8 +170,8 @@ class _TvScreenState extends State<TvScreen> {
       // 如果内容不足以滚动（maxScrollExtent <= 0），直接尝试加载更多
       if (position.maxScrollExtent <= 0) {
         // 检查是否有更多数据且当前不在加载中
-        if (_hasMore && !_isLoading && !_isLoadingMore && _tvShows.isNotEmpty) {
-          _loadMoreTvShows();
+        if (_hasMore && !_isLoading && !_isLoadingMore && _movies.isNotEmpty) {
+          _loadMoreMovies();
         }
         return;
       }
@@ -194,7 +179,7 @@ class _TvScreenState extends State<TvScreen> {
       // 正常滚动情况：当滚动到距离底部50像素内时触发加载
       const double threshold = 50.0;
       if (position.pixels >= position.maxScrollExtent - threshold) {
-        _loadMoreTvShows();
+        _loadMoreMovies();
       }
     }
   }
@@ -208,19 +193,19 @@ class _TvScreenState extends State<TvScreen> {
     final position = _scrollController.position;
     
     // 如果内容不足以滚动，说明没有填满屏幕，自动加载更多
-    if (position.maxScrollExtent <= 0 && _tvShows.isNotEmpty) {
-      _loadMoreTvShows();
+    if (position.maxScrollExtent <= 0 && _movies.isNotEmpty) {
+      _loadMoreMovies();
     }
   }
 
-  Future<void> _fetchTvShows({bool isRefresh = false}) async {
+  Future<void> _fetchMovies({bool isRefresh = false}) async {
     // 记录发起请求时的筛选状态
     final requestFilterState = _getCurrentFilterState();
 
     setState(() {
       _isLoading = true;
       if (isRefresh) {
-        _tvShows.clear();
+        _movies.clear();
         _page = 0;
         _hasMore = true;
       }
@@ -229,37 +214,37 @@ class _TvScreenState extends State<TvScreen> {
 
     if (_selectedCategoryValue == '全部') {
       // 将界面选项转换为豆瓣API参数
-      String categoryValue = _selectedTvType;
-      String regionValue = _selectedTvRegion;
-      String yearValue = _selectedTvYear;
+      String categoryValue = _selectedMovieType;
+      String regionValue = _selectedMovieRegion;
+      String yearValue = _selectedMovieYear;
       
       // 转换地区参数为中文标签
       if (regionValue != 'all') {
-        regionValue = _tvRegionOptions
+        regionValue = _movieRegionOptions
             .firstWhere((e) => e.value == regionValue)
             .label;
       }
       
       // 转换年代参数为中文标签
       if (yearValue != 'all') {
-        yearValue = _tvYearOptions
+        yearValue = _movieYearOptions
             .firstWhere((e) => e.value == yearValue)
             .label;
       }
       
       // 转换类型参数为中文标签
       if (categoryValue != 'all') {
-        categoryValue = _tvTypeOptions
+        categoryValue = _movieTypeOptions
             .firstWhere((e) => e.value == categoryValue)
             .label;
       }
       
       final params = DoubanRecommendsParams(
-        kind: 'tv',
+        kind: 'movie',
         category: categoryValue,
         region: regionValue,
         year: yearValue,
-        sort: _selectedTvSort,
+        sort: _selectedMovieSort,
         pageLimit: _pageLimit,
         page: _page,
       );
@@ -277,7 +262,7 @@ class _TvScreenState extends State<TvScreen> {
         
         setState(() {
           if (result.success && result.data != null) {
-            _tvShows.addAll(result.data!);
+            _movies.addAll(result.data!);
             _page++;
             // 只有当返回的数据为空时才停止分页
             if (result.data!.isEmpty) {
@@ -299,7 +284,7 @@ class _TvScreenState extends State<TvScreen> {
     } else {
       final result = await DoubanService.getCategoryData(
         context,
-        kind: 'tv',
+        kind: 'movie',
         category: _selectedCategoryValue,
         type: _selectedRegionValue,
         page: _page,
@@ -315,7 +300,7 @@ class _TvScreenState extends State<TvScreen> {
         
         setState(() {
           if (result.success && result.data != null) {
-            _tvShows.addAll(result.data!);
+            _movies.addAll(result.data!);
             _page++;
             // 只有当返回的数据为空时才停止分页
             if (result.data!.isEmpty) {
@@ -337,7 +322,7 @@ class _TvScreenState extends State<TvScreen> {
     }
   }
 
-  Future<void> _loadMoreTvShows() async {
+  Future<void> _loadMoreMovies() async {
     if (_isLoading || _isLoadingMore || !_hasMore) return;
 
     // 记录发起请求时的筛选状态
@@ -349,37 +334,37 @@ class _TvScreenState extends State<TvScreen> {
 
     if (_selectedCategoryValue == '全部') {
       // 将界面选项转换为豆瓣API参数
-      String categoryValue = _selectedTvType;
-      String regionValue = _selectedTvRegion;
-      String yearValue = _selectedTvYear;
+      String categoryValue = _selectedMovieType;
+      String regionValue = _selectedMovieRegion;
+      String yearValue = _selectedMovieYear;
       
       // 转换地区参数为中文标签
       if (regionValue != 'all') {
-        regionValue = _tvRegionOptions
+        regionValue = _movieRegionOptions
             .firstWhere((e) => e.value == regionValue)
             .label;
       }
       
       // 转换年代参数为中文标签
       if (yearValue != 'all') {
-        yearValue = _tvYearOptions
+        yearValue = _movieYearOptions
             .firstWhere((e) => e.value == yearValue)
             .label;
       }
       
       // 转换类型参数为中文标签
       if (categoryValue != 'all') {
-        categoryValue = _tvTypeOptions
+        categoryValue = _movieTypeOptions
             .firstWhere((e) => e.value == categoryValue)
             .label;
       }
       
       final params = DoubanRecommendsParams(
-        kind: 'tv',
+        kind: 'movie',
         category: categoryValue,
         region: regionValue,
         year: yearValue,
-        sort: _selectedTvSort,
+        sort: _selectedMovieSort,
         pageLimit: _pageLimit,
         page: _page,
       );
@@ -397,7 +382,7 @@ class _TvScreenState extends State<TvScreen> {
         
         setState(() {
           if (result.success && result.data != null) {
-            _tvShows.addAll(result.data!);
+            _movies.addAll(result.data!);
             _page++;
             // 只有当返回的数据为空时才停止分页
             if (result.data!.isEmpty) {
@@ -412,7 +397,7 @@ class _TvScreenState extends State<TvScreen> {
     } else {
       final result = await DoubanService.getCategoryData(
         context,
-        kind: 'tv',
+        kind: 'movie',
         category: _selectedCategoryValue,
         type: _selectedRegionValue,
         page: _page,
@@ -428,7 +413,7 @@ class _TvScreenState extends State<TvScreen> {
         
         setState(() {
           if (result.success && result.data != null) {
-            _tvShows.addAll(result.data!);
+            _movies.addAll(result.data!);
             _page++;
             // 只有当返回的数据为空时才停止分页
             if (result.data!.isEmpty) {
@@ -443,8 +428,8 @@ class _TvScreenState extends State<TvScreen> {
     }
   }
 
-  Future<void> _refreshTvShowsData() async {
-    await _fetchTvShows(isRefresh: true);
+  Future<void> _refreshMoviesData() async {
+    await _fetchMovies(isRefresh: true);
   }
 
   void _onVideoTap(PlayRecord playRecord) {
@@ -491,8 +476,8 @@ class _TvScreenState extends State<TvScreen> {
   @override
   Widget build(BuildContext context) {
     return StyledRefreshIndicator(
-      onRefresh: _refreshTvShowsData,
-      refreshText: '刷新电视剧数据...',
+      onRefresh: _refreshMoviesData,
+      refreshText: '刷新电影数据...',
       primaryColor: const Color(0xFF27AE60),
       child: SingleChildScrollView(
         controller: _scrollController,
@@ -503,14 +488,14 @@ class _TvScreenState extends State<TvScreen> {
             _buildFilterSection(),
             const SizedBox(height: 16),
             DoubanMoviesGrid(
-              movies: _tvShows,
-              isLoading: _isLoading && _tvShows.isEmpty,
+              movies: _movies,
+              isLoading: _isLoading && _movies.isEmpty,
               errorMessage: _errorMessage,
               onVideoTap: _onVideoTap,
               onGlobalMenuAction: (videoInfo, action) {
                 _handleMenuAction(videoInfo, action);
               },
-              contentType: 'tv',
+              contentType: 'movie',
             ),
             // 底部指示器 - 加载更多或到底提示
             if (_isLoadingMore)
@@ -518,7 +503,7 @@ class _TvScreenState extends State<TvScreen> {
                 padding: EdgeInsets.all(16.0),
                 child: PulsingDotsIndicator(),
               )
-            else if (!_hasMore && _tvShows.isNotEmpty && !_isLoading)
+            else if (!_hasMore && _movies.isNotEmpty && !_isLoading)
               _buildEndOfListIndicator()
             else
               const SizedBox(height: 50), // 占位符保持间距
@@ -535,7 +520,7 @@ class _TvScreenState extends State<TvScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            '电视剧',
+            '电影',
             style: GoogleFonts.poppins(
               fontSize: 28,
               fontWeight: FontWeight.w600,
@@ -571,13 +556,13 @@ class _TvScreenState extends State<TvScreen> {
         children: [
           _buildFilterRow(
             '分类',
-            _tvPrimaryOptions,
+            _moviePrimaryOptions,
             _selectedCategoryValue,
             (newValue) {
               setState(() {
                 _selectedCategoryValue = newValue;
               });
-              _fetchTvShows(isRefresh: true);
+              _fetchMovies(isRefresh: true);
             },
           ),
           const SizedBox(height: 16),
@@ -609,26 +594,22 @@ class _TvScreenState extends State<TvScreen> {
         Expanded(
           child: Row(
             children: [
-              _buildFilterPill('类型', _tvTypeOptions, _selectedTvType, (v) {
-                setState(() => _selectedTvType = v);
-                _fetchTvShows(isRefresh: true);
+              _buildFilterPill('类型', _movieTypeOptions, _selectedMovieType, (v) {
+                setState(() => _selectedMovieType = v);
+                _fetchMovies(isRefresh: true);
               }),
-              _buildFilterPill('地区', _tvRegionOptions, _selectedTvRegion,
+              _buildFilterPill('地区', _movieRegionOptions, _selectedMovieRegion,
                   (v) {
-                setState(() => _selectedTvRegion = v);
-                _fetchTvShows(isRefresh: true);
+                setState(() => _selectedMovieRegion = v);
+                _fetchMovies(isRefresh: true);
               }),
-              _buildFilterPill('年代', _tvYearOptions, _selectedTvYear, (v) {
-                setState(() => _selectedTvYear = v);
-                _fetchTvShows(isRefresh: true);
+              _buildFilterPill('年代', _movieYearOptions, _selectedMovieYear, (v) {
+                setState(() => _selectedMovieYear = v);
+                _fetchMovies(isRefresh: true);
               }),
-              _buildFilterPill('平台', _tvPlatformOptions, _selectedTvPlatform, (v) {
-                setState(() => _selectedTvPlatform = v);
-                _fetchTvShows(isRefresh: true);
-              }),
-              _buildFilterPill('排序', _tvSortOptions, _selectedTvSort, (v) {
-                setState(() => _selectedTvSort = v);
-                _fetchTvShows(isRefresh: true);
+              _buildFilterPill('排序', _movieSortOptions, _selectedMovieSort, (v) {
+                setState(() => _selectedMovieSort = v);
+                _fetchMovies(isRefresh: true);
               }),
             ],
           ),
@@ -642,7 +623,7 @@ class _TvScreenState extends State<TvScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          '类型',
+          '地区',
           style: GoogleFonts.poppins(
             fontSize: 14,
             fontWeight: FontWeight.w500,
@@ -653,14 +634,14 @@ class _TvScreenState extends State<TvScreen> {
         SingleChildScrollView(
           scrollDirection: Axis.horizontal,
           child: CapsuleTabSwitcher(
-            tabs: _tvSecondaryOptions.map((e) => e.label).toList(),
-            selectedTab: _tvSecondaryOptions.firstWhere((e) => e.value == _selectedRegionValue).label,
+            tabs: _movieSecondaryOptions.map((e) => e.label).toList(),
+            selectedTab: _movieSecondaryOptions.firstWhere((e) => e.value == _selectedRegionValue).label,
             onTabChanged: (newLabel) {
-              final newValue = _tvSecondaryOptions.firstWhere((e) => e.label == newLabel).value;
+              final newValue = _movieSecondaryOptions.firstWhere((e) => e.label == newLabel).value;
               setState(() {
                 _selectedRegionValue = newValue;
               });
-              _fetchTvShows(isRefresh: true);
+              _fetchMovies(isRefresh: true);
             },
           ),
         ),
@@ -853,7 +834,7 @@ class _TvScreenState extends State<TvScreen> {
           ),
           const SizedBox(height: 4),
           Text(
-            '共 ${_tvShows.length} 部电视剧',
+            '共 ${_movies.length} 部电影',
             style: GoogleFonts.poppins(
               fontSize: 12,
               color: themeService.isDarkMode

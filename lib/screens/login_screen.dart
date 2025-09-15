@@ -214,11 +214,11 @@ class _LoginScreenState extends State<LoginScreen> {
                   // Selene 标题
                   Text(
                     'Selene',
-                    style: GoogleFonts.poppins(
+                    style: GoogleFonts.sourceCodePro(
                       fontSize: 42,
-                      fontWeight: FontWeight.w300,
+                      fontWeight: FontWeight.w400,
                       color: const Color(0xFF2c3e50),
-                      letterSpacing: 2.0,
+                      letterSpacing: 1.5,
                     ),
                   ),
                   const SizedBox(height: 40),
