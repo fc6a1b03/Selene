@@ -562,6 +562,12 @@ class _MovieScreenState extends State<MovieScreen> {
             (newValue) {
               setState(() {
                 _selectedCategoryValue = newValue;
+                // 重置二级筛选为默认值
+                _selectedRegionValue = '全部'; // 胶囊筛选默认值
+                _selectedMovieType = 'all'; // 多级筛选默认值
+                _selectedMovieRegion = 'all';
+                _selectedMovieYear = 'all';
+                _selectedMovieSort = 'T';
               });
               _fetchMovies(isRefresh: true);
             },

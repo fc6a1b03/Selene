@@ -595,6 +595,13 @@ class _TvScreenState extends State<TvScreen> {
             (newValue) {
               setState(() {
                 _selectedCategoryValue = newValue;
+                // 重置二级筛选为默认值
+                _selectedRegionValue = 'tv'; // 胶囊筛选默认值
+                _selectedTvType = 'all'; // 多级筛选默认值
+                _selectedTvRegion = 'all';
+                _selectedTvYear = 'all';
+                _selectedTvPlatform = 'all';
+                _selectedTvSort = 'T';
               });
               _fetchTvShows(isRefresh: true);
             },

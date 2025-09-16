@@ -533,14 +533,14 @@ class _ShowScreenState extends State<ShowScreen> {
   Widget _buildHeader() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 20, 16, 8),
-      child: Column(
+              child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            '综艺',
-            style: GoogleFonts.poppins(
+                children: [
+                  Text(
+                    '综艺',
+                    style: GoogleFonts.poppins(
               fontSize: 28,
-              fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.w600,
               color: Theme.of(context).textTheme.titleLarge?.color,
             ),
           ),
@@ -563,15 +563,15 @@ class _ShowScreenState extends State<ShowScreen> {
       width: double.infinity, // 设置为100%宽度
       margin: const EdgeInsets.all(16), // 恢复原来的margin设置
       padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16), // 恢复原来的padding设置
-      decoration: BoxDecoration(
+                    decoration: BoxDecoration(
         color: themeService.isDarkMode
             ? Colors.white.withOpacity(0.1)
             : Colors.white.withOpacity(0.8),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
           _buildFilterRow(
             '分类',
             _showPrimaryOptions,
@@ -579,11 +579,18 @@ class _ShowScreenState extends State<ShowScreen> {
             (newValue) {
               setState(() {
                 _selectedCategoryValue = newValue;
+                // 重置二级筛选为默认值
+                _selectedRegionValue = 'show'; // 胶囊筛选默认值
+                _selectedShowType = 'all'; // 多级筛选默认值
+                _selectedShowRegion = 'all';
+                _selectedShowYear = 'all';
+                _selectedShowPlatform = 'all';
+                _selectedShowSort = 'T';
               });
               _fetchShows(isRefresh: true);
             },
           ),
-          const SizedBox(height: 16),
+                          const SizedBox(height: 16),
           // 使用固定高度的容器来避免高度跳跃
           SizedBox(
             height: 66, // 增加高度以避免Column底部溢出
@@ -600,10 +607,10 @@ class _ShowScreenState extends State<ShowScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
+                          Text(
           '筛选',
-          style: GoogleFonts.poppins(
-            fontSize: 14,
+                            style: GoogleFonts.poppins(
+                              fontSize: 14,
             fontWeight: FontWeight.w500,
             color: Theme.of(context).textTheme.bodyMedium?.color,
           ),
@@ -634,11 +641,11 @@ class _ShowScreenState extends State<ShowScreen> {
                   setState(() => _selectedShowSort = v);
                   _fetchShows(isRefresh: true);
                 }),
-              ],
-            ),
-          ),
-        ),
-      ],
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
     );
   }
 
