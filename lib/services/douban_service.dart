@@ -95,6 +95,189 @@ class DoubanService {
     return _uniqueOrigin!;
   }
 
+  /// 解析豆瓣HTML详情页面
+  static DoubanMovieDetails _parseDoubanHtmlDetails(String html, String id) {
+    try {
+      // 提取基本信息 - 标题
+      final titleRegex = RegExp(r'<h1[^>]*>[\s\S]*?<span[^>]*property="v:itemreviewed"[^>]*>([^<]+)</span>');
+      final titleMatch = titleRegex.firstMatch(html);
+      final title = titleMatch?.group(1)?.trim() ?? '';
+
+      // 提取海报
+      final posterRegex = RegExp(r'<a[^>]*class="nbgnbg"[^>]*>[\s\S]*?<img[^>]*src="([^"]+)"');
+      final posterMatch = posterRegex.firstMatch(html);
+      final poster = posterMatch?.group(1) ?? '';
+
+      // 提取评分
+      final ratingRegex = RegExp(r'<strong[^>]*class="ll rating_num"[^>]*property="v:average">([^<]+)</strong>');
+      final ratingMatch = ratingRegex.firstMatch(html);
+      final rate = ratingMatch?.group(1);
+
+      // 提取年份
+      final yearRegex = RegExp(r'<span[^>]*class="year">[(]([^)]+)[)]</span>');
+      final yearMatch = yearRegex.firstMatch(html);
+      final year = yearMatch?.group(1) ?? '';
+
+      // 提取导演
+      List<String> directors = [];
+      final directorRegex = RegExp(r'<span class=["\x27]pl["\x27]>导演</span>:\s*<span class=["\x27]attrs["\x27]>(.*?)</span>');
+      final directorMatch = directorRegex.firstMatch(html);
+      if (directorMatch != null) {
+        final directorLinks = RegExp(r'<a[^>]*>([^<]+)</a>').allMatches(directorMatch.group(1)!);
+        directors = directorLinks.map((match) => match.group(1)?.trim() ?? '').where((name) => name.isNotEmpty).toList();
+      }
+
+      // 提取编剧
+      List<String> screenwriters = [];
+      final writerRegex = RegExp(r'<span class=["\x27]pl["\x27]>编剧</span>:\s*<span class=["\x27]attrs["\x27]>(.*?)</span>');
+      final writerMatch = writerRegex.firstMatch(html);
+      if (writerMatch != null) {
+        final writerLinks = RegExp(r'<a[^>]*>([^<]+)</a>').allMatches(writerMatch.group(1)!);
+        screenwriters = writerLinks.map((match) => match.group(1)?.trim() ?? '').where((name) => name.isNotEmpty).toList();
+      }
+
+      // 提取主演
+      List<String> actors = [];
+      final castRegex = RegExp(r'<span class=["\x27]pl["\x27]>主演</span>:\s*<span class=["\x27]attrs["\x27]>(.*?)</span>');
+      final castMatch = castRegex.firstMatch(html);
+      if (castMatch != null) {
+        final castLinks = RegExp(r'<a[^>]*>([^<]+)</a>').allMatches(castMatch.group(1)!);
+        actors = castLinks.map((match) => match.group(1)?.trim() ?? '').where((name) => name.isNotEmpty).toList();
+      }
+
+      // 提取类型
+      final genreRegex = RegExp(r'<span[^>]*property="v:genre">([^<]+)</span>');
+      final genreMatches = genreRegex.allMatches(html);
+      final genres = genreMatches.map((match) => match.group(1) ?? '').where((genre) => genre.isNotEmpty).toList();
+
+      // 提取制片国家/地区
+      final countryRegex = RegExp(r'<span[^>]*class="pl">制片国家/地区:</span>([^<]+)');
+      final countryMatch = countryRegex.firstMatch(html);
+      final countries = countryMatch?.group(1)?.trim().split('/').map((c) => c.trim()).where((c) => c.isNotEmpty).toList() ?? <String>[];
+
+      // 提取语言
+      final languageRegex = RegExp(r'<span[^>]*class="pl">语言:</span>([^<]+)');
+      final languageMatch = languageRegex.firstMatch(html);
+      final languages = languageMatch?.group(1)?.trim().split('/').map((l) => l.trim()).where((l) => l.isNotEmpty).toList() ?? <String>[];
+
+      // 提取首播/上映日期
+      String? releaseDate;
+      final firstAiredRegex = RegExp(r'<span class="pl">首播:</span>\s*<span[^>]*property="v:initialReleaseDate"[^>]*content="([^"]*)"[^>]*>([^<]*)</span>');
+      final firstAiredMatch = firstAiredRegex.firstMatch(html);
+      if (firstAiredMatch != null) {
+        releaseDate = firstAiredMatch.group(1);
+      } else {
+        final releaseDateRegex = RegExp(r'<span class="pl">上映日期:</span>\s*<span[^>]*property="v:initialReleaseDate"[^>]*content="([^"]*)"[^>]*>([^<]*)</span>');
+        final releaseDateMatch = releaseDateRegex.firstMatch(html);
+        if (releaseDateMatch != null) {
+          releaseDate = releaseDateMatch.group(1);
+        }
+      }
+
+      // 提取集数（仅剧集有） - 暂时不使用，但保留解析逻辑以备将来使用
+      // int? episodes;
+      // final episodesRegex = RegExp(r'<span[^>]*class="pl">集数:</span>([^<]+)');
+      // final episodesMatch = episodesRegex.firstMatch(html);
+      // if (episodesMatch != null) {
+      //   episodes = int.tryParse(episodesMatch.group(1)?.trim() ?? '');
+      // }
+
+      // 提取时长 - 支持电影和剧集
+      int? episodeLength;
+      int? movieDuration;
+      
+      // 先尝试提取剧集的单集片长
+      final singleEpisodeDurationRegex = RegExp(r'<span[^>]*class="pl">单集片长:</span>([^<]+)');
+      final singleEpisodeDurationMatch = singleEpisodeDurationRegex.firstMatch(html);
+      if (singleEpisodeDurationMatch != null) {
+        episodeLength = int.tryParse(singleEpisodeDurationMatch.group(1)?.trim() ?? '');
+      } else {
+        // 如果没有单集片长，尝试提取电影的总片长
+        final movieDurationRegex = RegExp(r'<span[^>]*class="pl">片长:</span>([^<]+)');
+        final movieDurationMatch = movieDurationRegex.firstMatch(html);
+        if (movieDurationMatch != null) {
+          movieDuration = int.tryParse(movieDurationMatch.group(1)?.trim() ?? '');
+        }
+      }
+      
+      // 为了保持与现有代码的兼容性，将时长转换为字符串
+      String? duration;
+      if (episodeLength != null) {
+        duration = '${episodeLength}分钟';
+      } else if (movieDuration != null) {
+        duration = '${movieDuration}分钟';
+      }
+
+      // 提取剧情简介 - 两个正则都匹配，选择内容更长的
+      String? summary;
+      
+      // 使用多行模式和非贪婪匹配来正确处理包含HTML标签的内容
+      final summaryRegex1 = RegExp(r'<span[^>]*class="all hidden">(.*?)</span>', multiLine: true, dotAll: true);
+      final summaryMatch1 = summaryRegex1.firstMatch(html);
+      String? summary1;
+      if (summaryMatch1 != null) {
+        summary1 = summaryMatch1.group(1)
+            ?.replaceAll(RegExp(r'<br\s*/?>', caseSensitive: false), '|||LINEBREAK|||') // 先用特殊标记替换<br>
+            ?.replaceAll(RegExp(r'<[^>]*>'), '') // 移除所有HTML标签
+            ?.replaceAll(RegExp(r'\s+'), ' ') // 去除重复空格，将所有空白字符（包括HTML中的\n）合并为单个空格
+            ?.replaceAll('|||LINEBREAK|||', '\n') // 将特殊标记恢复为换行符
+            ?.trim()
+            ?.split('\n') // 按换行符分割
+            .join('\n'); // 重新组合
+      }
+      
+      final summaryRegex2 = RegExp(r'<span[^>]*property="v:summary"[^>]*>(.*?)</span>', multiLine: true, dotAll: true);
+      final summaryMatch2 = summaryRegex2.firstMatch(html);
+      String? summary2;
+      if (summaryMatch2 != null) {
+        summary2 = summaryMatch2.group(1)
+            ?.replaceAll(RegExp(r'<br\s*/?>', caseSensitive: false), '|||LINEBREAK|||') // 先用特殊标记替换<br>
+            ?.replaceAll(RegExp(r'<[^>]*>'), '') // 移除所有HTML标签
+            ?.replaceAll(RegExp(r'\s+'), ' ') // 去除重复空格，将所有空白字符（包括HTML中的\n）合并为单个空格
+            ?.replaceAll('|||LINEBREAK|||', '\n') // 将特殊标记恢复为换行符
+            ?.trim()
+            ?.split('\n') // 按换行符分割
+            .join('\n'); // 重新组合
+      }
+      
+      // 选择内容更长的简介
+      if (summary1 != null && summary2 != null) {
+        summary = summary1.length >= summary2.length ? summary1 : summary2;
+      } else if (summary1 != null) {
+        summary = summary1;
+      } else if (summary2 != null) {
+        summary = summary2;
+      }
+
+      return DoubanMovieDetails(
+        id: id,
+        title: title,
+        poster: poster,
+        rate: rate,
+        year: year,
+        summary: summary,
+        genres: genres,
+        directors: directors,
+        screenwriters: screenwriters,
+        actors: actors,
+        duration: duration,
+        countries: countries,
+        languages: languages,
+        releaseDate: releaseDate,
+        originalTitle: null, // HTML页面中暂未找到原始标题的提取逻辑
+        imdbId: null, // HTML页面中暂未找到IMDB ID的提取逻辑
+      );
+    } catch (e) {
+      // 如果解析失败，返回基本信息
+      return DoubanMovieDetails(
+        id: id,
+        title: '解析失败',
+        poster: '',
+        year: '',
+      );
+    }
+  }
+
   /// 初始化缓存服务
   static Future<void> _initCache() async {
     if (!_cacheInitialized) {
@@ -455,6 +638,139 @@ class DoubanService {
       }
     } catch (e) {
       return ApiResponse.error('豆瓣推荐数据请求异常: ${e.toString()}');
+    }
+  }
+
+  /// 获取豆瓣详情数据
+  /// 
+  /// 参数说明：
+  /// - doubanId: 豆瓣ID
+  static Future<ApiResponse<DoubanMovieDetails>> getDoubanDetails(
+    BuildContext context, {
+    required String doubanId,
+  }) async {
+    // 初始化缓存服务
+    await _initCache();
+
+    // 生成缓存键
+    final cacheKey = _cacheService.generateDoubanDetailsCacheKey(
+      doubanId: doubanId,
+    );
+
+    // 尝试从缓存获取数据
+    try {
+      final cachedData = await _cacheService.get<DoubanMovieDetails>(
+        cacheKey,
+        (raw) {
+          final map = raw as Map<String, dynamic>;
+          return DoubanMovieDetails(
+            id: map['id']?.toString() ?? '',
+            title: map['title']?.toString() ?? '',
+            poster: map['poster']?.toString() ?? '',
+            rate: map['rate']?.toString(),
+            year: map['year']?.toString() ?? '',
+            summary: map['summary']?.toString(),
+            genres: (map['genres'] as List<dynamic>? ?? [])
+                .map((g) => g.toString())
+                .toList(),
+            directors: (map['directors'] as List<dynamic>? ?? [])
+                .map((d) => d.toString())
+                .toList(),
+            screenwriters: (map['screenwriters'] as List<dynamic>? ?? [])
+                .map((s) => s.toString())
+                .toList(),
+            actors: (map['actors'] as List<dynamic>? ?? [])
+                .map((a) => a.toString())
+                .toList(),
+            duration: map['duration']?.toString(),
+            countries: (map['countries'] as List<dynamic>? ?? [])
+                .map((c) => c.toString())
+                .toList(),
+            languages: (map['languages'] as List<dynamic>? ?? [])
+                .map((l) => l.toString())
+                .toList(),
+            releaseDate: map['releaseDate']?.toString(),
+            originalTitle: map['originalTitle']?.toString(),
+            imdbId: map['imdbId']?.toString(),
+          );
+        },
+      );
+
+      if (cachedData != null) {
+        return ApiResponse.success(cachedData);
+      }
+    } catch (e) {
+      // 缓存读取失败，继续执行网络请求
+      print('读取豆瓣详情缓存失败: $e');
+    }
+
+    // 获取用户存储的豆瓣数据源选项
+    final dataSourceKey = await UserDataService.getDoubanDataSourceKey();
+    
+    // 根据数据源选项构建不同的基础URL
+    String apiUrl;
+    switch (dataSourceKey) {
+      case 'cdn_tencent':
+        apiUrl = 'https://movie.douban.cmliussss.net/subject/$doubanId';
+        break;
+      case 'cdn_aliyun':
+        apiUrl = 'https://movie.douban.cmliussss.com/subject/$doubanId';
+        break;
+      case 'direct':
+      default:
+        apiUrl = 'https://movie.douban.com/subject/$doubanId';
+        break;
+    }
+    
+    if (dataSourceKey == 'cors_proxy') {
+      apiUrl = 'https://ciao-cors.is-an.org/${Uri.encodeComponent(apiUrl)}';
+    }
+    
+    try {
+      final headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
+        'Referer': 'https://movie.douban.com/',
+        'Accept': 'application/json, text/plain, */*',
+      };
+      
+      // 如果使用 cors_proxy，添加 Origin 头
+      if (dataSourceKey == 'cors_proxy') {
+        headers['Origin'] = _getUniqueOrigin();
+      }
+      
+      final response = await http.get(
+        Uri.parse(apiUrl),
+        headers: headers,
+      ).timeout(const Duration(seconds: 30));
+
+      if (response.statusCode == 200) {
+        try {
+          // 解析HTML响应
+          final details = _parseDoubanHtmlDetails(response.body, doubanId);
+          
+          // 缓存成功的结果，缓存时间为24小时
+          try {
+            await _cacheService.set(
+              cacheKey,
+              details.toJson(),
+              const Duration(days: 3),
+            );
+          } catch (cacheError) {
+            print('缓存豆瓣详情数据失败: $cacheError');
+          }
+          
+          return ApiResponse.success(details, statusCode: response.statusCode);
+        } catch (parseError) {
+          return ApiResponse.error('豆瓣详情数据解析失败: ${parseError.toString()}');
+        }
+      } else {
+        return ApiResponse.error(
+          '获取豆瓣详情数据失败: ${response.statusCode}',
+          statusCode: response.statusCode,
+        );
+      }
+    } catch (e) {
+      return ApiResponse.error('豆瓣详情数据请求异常: ${e.toString()}');
     }
   }
 }

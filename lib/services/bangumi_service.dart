@@ -107,6 +107,87 @@ class BangumiService {
       return ApiResponse.error('Bangumi 数据请求异常: ${e.toString()}');
     }
   }
+
+  /// 获取 Bangumi 详情数据
+  /// 
+  /// 参数说明：
+  /// - bangumiId: Bangumi ID
+  static Future<ApiResponse<BangumiDetails>> getBangumiDetails(
+    BuildContext context, {
+    required String bangumiId,
+  }) async {
+    await _initCache();
+
+    // 生成缓存键
+    final cacheKey = _cache.generateBangumiDetailsCacheKey(
+      bangumiId: bangumiId,
+    );
+
+    // 尝试从缓存获取数据
+    try {
+      final cachedData = await _cache.get<BangumiDetails>(
+        cacheKey,
+        (raw) {
+          if (raw is! Map<String, dynamic>) {
+            throw FormatException('Bangumi 缓存数据格式错误: ${raw.runtimeType}');
+          }
+          return BangumiDetails.fromJson(raw);
+        },
+      );
+
+      if (cachedData != null) {
+        return ApiResponse.success(cachedData);
+      }
+    } catch (e) {
+      // 缓存读取失败，清理可能损坏的缓存，继续执行网络请求
+      try {
+        // 清理这个特定的缓存项
+        await _cache.set(cacheKey, null, Duration.zero);
+      } catch (_) {}
+    }
+
+    try {
+      final apiUrl = 'https://api.bgm.tv/v0/subjects/$bangumiId';
+      final headers = {
+        'User-Agent': 'senshinya/selene/1.0.0 (Android) (http://github.com/senshinya/selene)',
+        'Accept': 'application/json',
+      };
+
+      final response = await http.get(
+        Uri.parse(apiUrl),
+        headers: headers,
+      ).timeout(const Duration(seconds: 30));
+
+      if (response.statusCode == 200) {
+        try {
+          final Map<String, dynamic> data = json.decode(response.body);
+          final details = BangumiDetails.fromJson(data);
+          
+          // 缓存成功的结果，缓存时间为24小时
+          try {
+            await _cache.set(
+              cacheKey,
+              details.toJson(),
+              const Duration(days: 3),
+            );
+          } catch (cacheError) {
+            // 静默处理缓存错误
+          }
+          
+          return ApiResponse.success(details, statusCode: response.statusCode);
+        } catch (parseError) {
+          return ApiResponse.error('Bangumi 详情数据解析失败: ${parseError.toString()}');
+        }
+      } else {
+        return ApiResponse.error(
+          '获取 Bangumi 详情数据失败: ${response.statusCode}',
+          statusCode: response.statusCode,
+        );
+      }
+    } catch (e) {
+      return ApiResponse.error('Bangumi 详情数据请求异常: ${e.toString()}');
+    }
+  }
 }
 
 

@@ -62,9 +62,18 @@ class BangumiRating {
   });
 
   factory BangumiRating.fromJson(Map<String, dynamic> json) {
+    // 安全地转换 count Map，确保值是整数
+    final countData = json['count'] ?? {};
+    final Map<String, int> safeCount = {};
+    if (countData is Map) {
+      countData.forEach((key, value) {
+        safeCount[key.toString()] = value is int ? value : int.tryParse(value.toString()) ?? 0;
+      });
+    }
+    
     return BangumiRating(
-      total: json['total'] ?? 0,
-      count: Map<String, int>.from(json['count'] ?? {}),
+      total: json['total'] is int ? json['total'] : int.tryParse(json['total']?.toString() ?? '0') ?? 0,
+      count: safeCount,
       score: (json['score'] ?? 0.0).toDouble(),
     );
   }
@@ -134,20 +143,36 @@ class BangumiImages {
 /// Bangumi 收藏数据模型
 class BangumiCollection {
   final int doing;
+  final int onHold;
+  final int dropped;
+  final int wish;
+  final int collect;
 
   const BangumiCollection({
     required this.doing,
+    this.onHold = 0,
+    this.dropped = 0,
+    this.wish = 0,
+    this.collect = 0,
   });
 
   factory BangumiCollection.fromJson(Map<String, dynamic> json) {
     return BangumiCollection(
       doing: json['doing'] ?? 0,
+      onHold: json['on_hold'] ?? 0,
+      dropped: json['dropped'] ?? 0,
+      wish: json['wish'] ?? 0,
+      collect: json['collect'] ?? 0,
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
       'doing': doing,
+      'on_hold': onHold,
+      'dropped': dropped,
+      'wish': wish,
+      'collect': collect,
     };
   }
 }
@@ -280,6 +305,124 @@ class BangumiItem {
     );
   }
 
+}
+
+/// Bangumi 详情数据模型
+class BangumiDetails {
+  final int id;
+  final int type;
+  final String name;
+  final String? nameCn;
+  final String summary;
+  final bool nsfw;
+  final bool locked;
+  final String? date;
+  final String? platform;
+  final BangumiImages images;
+  final List<String> infobox;
+  final int volumes;
+  final int eps;
+  final int totalEpisodes;
+  final BangumiRating rating;
+  final BangumiCollection collection;
+  final List<String> tags;
+  final List<String> metaTags;
+  final bool series;
+
+  const BangumiDetails({
+    required this.id,
+    required this.type,
+    required this.name,
+    this.nameCn,
+    required this.summary,
+    required this.nsfw,
+    required this.locked,
+    this.date,
+    this.platform,
+    required this.images,
+    required this.infobox,
+    required this.volumes,
+    required this.eps,
+    required this.totalEpisodes,
+    required this.rating,
+    required this.collection,
+    required this.tags,
+    required this.metaTags,
+    required this.series,
+  });
+
+  factory BangumiDetails.fromJson(Map<String, dynamic> json) {
+    return BangumiDetails(
+      id: json['id'] ?? 0,
+      type: json['type'] ?? 0,
+      name: _decodeHtmlEntities(json['name']?.toString() ?? ''),
+      nameCn: json['name_cn']?.toString() != null 
+          ? _decodeHtmlEntities(json['name_cn']!.toString())
+          : null,
+      summary: _decodeHtmlEntities(json['summary']?.toString() ?? ''),
+      nsfw: json['nsfw'] ?? false,
+      locked: json['locked'] ?? false,
+      date: json['date']?.toString(),
+      platform: json['platform']?.toString(),
+      images: BangumiImages.fromJson(json['images'] ?? {}),
+      infobox: (json['infobox'] as List<dynamic>? ?? [])
+          .map((item) {
+            if (item is Map<String, dynamic>) {
+              final value = item['value'];
+              if (value is List) {
+                final valueList = value.map((v) => v['v']?.toString() ?? '').join(', ');
+                return '${item['key']}: $valueList';
+              }
+              return '${item['key']}: ${value?.toString() ?? ''}';
+            }
+            return item.toString();
+          })
+          .toList(),
+      volumes: json['volumes'] ?? 0,
+      eps: json['eps'] ?? 0,
+      totalEpisodes: json['total_episodes'] ?? 0,
+      rating: BangumiRating.fromJson(json['rating'] ?? {}),
+      collection: BangumiCollection.fromJson(json['collection'] ?? {}),
+      tags: (json['tags'] as List<dynamic>? ?? [])
+          .map((tag) {
+            if (tag is Map<String, dynamic>) {
+              return tag['name']?.toString() ?? '';
+            } else {
+              return tag.toString();
+            }
+          })
+          .where((name) => name.isNotEmpty)
+          .toList(),
+      metaTags: (json['meta_tags'] as List<dynamic>? ?? [])
+          .map((tag) => tag.toString())
+          .toList(),
+      series: json['series'] ?? false,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'type': type,
+      'name': name,
+      'name_cn': nameCn,
+      'summary': summary,
+      'nsfw': nsfw,
+      'locked': locked,
+      'date': date,
+      'platform': platform,
+      'images': images.toJson(),
+      'infobox': infobox,
+      'volumes': volumes,
+      'eps': eps,
+      'total_episodes': totalEpisodes,
+      'rating': rating.toJson(),
+      'collection': collection.toJson(),
+      'tags': tags,
+      'meta_tags': metaTags,
+      'series': series,
+    };
+  }
 }
 
 /// Bangumi 日历响应数据模型

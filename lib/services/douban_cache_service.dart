@@ -27,11 +27,41 @@ class CacheItem<T> {
 
   /// 从JSON创建缓存项
   static CacheItem<T> fromJson<T>(Map<String, dynamic> json, T Function(dynamic) fromJsonFunc) {
-    return CacheItem<T>(
-      data: fromJsonFunc(json['data']),
-      timestamp: DateTime.fromMillisecondsSinceEpoch(json['timestamp']),
-      expiration: Duration(milliseconds: json['expiration']),
-    );
+    try {
+      // 检查必需的字段
+      if (!json.containsKey('data') || !json.containsKey('timestamp') || !json.containsKey('expiration')) {
+        throw FormatException('缓存项缺少必需字段: ${json.keys.toList()}');
+      }
+
+      final timestampValue = json['timestamp'];
+      final expirationValue = json['expiration'];
+      
+      int timestamp;
+      if (timestampValue is int) {
+        timestamp = timestampValue;
+      } else if (timestampValue is String) {
+        timestamp = int.parse(timestampValue);
+      } else {
+        throw FormatException('timestamp 字段类型错误: ${timestampValue.runtimeType}');
+      }
+      
+      int expiration;
+      if (expirationValue is int) {
+        expiration = expirationValue;
+      } else if (expirationValue is String) {
+        expiration = int.parse(expirationValue);
+      } else {
+        throw FormatException('expiration 字段类型错误: ${expirationValue.runtimeType}');
+      }
+
+      return CacheItem<T>(
+        data: fromJsonFunc(json['data']),
+        timestamp: DateTime.fromMillisecondsSinceEpoch(timestamp),
+        expiration: Duration(milliseconds: expiration),
+      );
+    } catch (e) {
+      rethrow;
+    }
   }
 }
 
@@ -92,8 +122,20 @@ class DoubanCacheService {
               }
             }
           } else {
-            // 使用解码器将原始 JSON 转成目标类型
-            return decode(raw);
+                // 使用解码器将原始 JSON 转成目标类型
+                try {
+                  return decode(raw);
+                } catch (e) {
+                  // 解码失败，删除缓存
+                  _memoryCache.remove(key);
+                  if (_cacheDir != null) {
+                    final file = File('${_cacheDir!.path}/$key.json');
+                    if (await file.exists()) {
+                      try { await file.delete(); } catch (_) {}
+                    }
+                  }
+                  rethrow;
+                }
           }
         } else {
           // 过期则删除
@@ -107,7 +149,12 @@ class DoubanCacheService {
         if (await file.exists()) {
           try {
             final jsonString = await file.readAsString();
-            final jsonData = json.decode(jsonString) as Map<String, dynamic>;
+            final jsonData = json.decode(jsonString);
+            
+            if (jsonData is! Map<String, dynamic>) {
+              try { await file.delete(); } catch (_) {}
+              return null;
+            }
 
             // 读取为原始 JSON（不做结构假设），再用 decode 转换
             final cacheItem = CacheItem.fromJson<dynamic>(jsonData, (data) => data);
@@ -120,7 +167,14 @@ class DoubanCacheService {
               } else {
                 // 重新加载到内存缓存
                 _memoryCache[key] = cacheItem;
-                return decode(raw);
+                try {
+                  return decode(raw);
+                } catch (e) {
+                  // 解码失败，删除缓存
+                  _memoryCache.remove(key);
+                  try { await file.delete(); } catch (_) {}
+                  rethrow;
+                }
               }
             } else {
               // 过期则删除文件
@@ -133,9 +187,7 @@ class DoubanCacheService {
         }
       }
     } catch (e) {
-      if (kDebugMode) {
-        print('获取豆瓣缓存失败: $e');
-      }
+      // 静默处理缓存读取错误
     }
     return null;
   }
@@ -302,5 +354,39 @@ class DoubanCacheService {
       'pageLimit': pageLimit,
       'page': page,
     });
+  }
+
+  /// 为豆瓣详情数据生成缓存键
+  String generateDoubanDetailsCacheKey({
+    required String doubanId,
+  }) {
+    return _generateCacheKey('douban_details', {
+      'doubanId': doubanId,
+    });
+  }
+
+  /// 为 Bangumi 详情数据生成缓存键
+  String generateBangumiDetailsCacheKey({
+    required String bangumiId,
+  }) {
+    return _generateCacheKey('bangumi_details', {
+      'bangumiId': bangumiId,
+    });
+  }
+
+  /// 清理所有缓存（用于调试）
+  Future<void> clearAllCache() async {
+    try {
+      _memoryCache.clear();
+      if (_cacheDir != null) {
+        if (await _cacheDir!.exists()) {
+          await _cacheDir!.delete(recursive: true);
+          await _cacheDir!.create(recursive: true);
+        }
+      }
+      // 缓存清理成功
+    } catch (e) {
+      // 静默处理清理错误
+    }
   }
 }
