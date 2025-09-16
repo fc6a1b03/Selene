@@ -21,10 +21,18 @@ class BangumiService {
   static Future<ApiResponse<List<BangumiItem>>> getTodayCalendar(
     BuildContext context,
   ) async {
+    final weekday = DateTime.now().weekday; // 1..7
+    return getCalendarByWeekday(context, weekday);
+  }
+
+  /// 获取指定星期的新番放送
+  static Future<ApiResponse<List<BangumiItem>>> getCalendarByWeekday(
+    BuildContext context,
+    int weekday, // 1..7 (Monday..Sunday)
+  ) async {
     await _initCache();
 
     // 接口级缓存：缓存原始 API 数组，固定键，不含参数
-    final weekday = DateTime.now().weekday; // 1..7
     const cacheKey = 'bangumi_calendar_raw_v1';
 
     // 先尝试读取原始数组缓存
@@ -37,14 +45,14 @@ class BangumiService {
         final calendar = cachedRaw
             .map((item) => BangumiCalendarResponse.fromJson(item as Map<String, dynamic>))
             .toList();
-        BangumiCalendarResponse? currentDay;
+        BangumiCalendarResponse? targetDay;
         for (final day in calendar) {
           if (day.weekday.id == weekday) {
-            currentDay = day;
+            targetDay = day;
             break;
           }
         }
-        final items = currentDay?.items ?? <BangumiItem>[];
+        final items = targetDay?.items ?? <BangumiItem>[];
         return ApiResponse.success(items);
       }
     } catch (_) {}
@@ -69,15 +77,15 @@ class BangumiService {
             .map((item) => BangumiCalendarResponse.fromJson(item as Map<String, dynamic>))
             .toList();
 
-        BangumiCalendarResponse? currentDay;
+        BangumiCalendarResponse? targetDay;
         for (final day in calendarData) {
           if (day.weekday.id == weekday) {
-            currentDay = day;
+            targetDay = day;
             break;
           }
         }
 
-        final items = currentDay?.items ?? <BangumiItem>[];
+        final items = targetDay?.items ?? <BangumiItem>[];
 
         // 写入接口级缓存：原始数组
         try {

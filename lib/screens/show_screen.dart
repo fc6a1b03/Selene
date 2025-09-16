@@ -545,11 +545,16 @@ class _ShowScreenState extends State<ShowScreen> {
             ),
           ),
           const SizedBox(height: 4),
-          Text(
-            '来自豆瓣的精选内容',
-            style: GoogleFonts.poppins(
-              fontSize: 14,
-              color: Theme.of(context).textTheme.bodySmall?.color,
+          SizedBox(
+            height: 20, // 固定高度确保一致性
+            child: Text(
+              '来自豆瓣的精选内容',
+              style: GoogleFonts.poppins(
+                fontSize: 14,
+                color: Theme.of(context).textTheme.bodySmall?.color,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
           ),
         ],

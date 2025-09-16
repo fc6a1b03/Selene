@@ -229,7 +229,7 @@ class _HomeScreenState extends State<HomeScreen> {
       case 2:
         return const TvScreen();
       case 3:
-        return const FavoritesScreen();
+        return const AnimeScreen();
       case 4:
         return const ShowScreen();
       default:
