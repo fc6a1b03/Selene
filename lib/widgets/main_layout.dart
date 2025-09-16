@@ -44,39 +44,49 @@ class _MainLayoutState extends State<MainLayout> {
           child: Scaffold(
             body: Stack(
               children: [
-                Container(
-                  decoration: BoxDecoration(
-                    color: themeService.isDarkMode 
-                        ? const Color(0xFF000000) // 深色模式纯黑色
-                        : null,
-                    gradient: themeService.isDarkMode 
-                        ? null
-                        : const LinearGradient(
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                            colors: [
-                              Color(0xFFe6f3fb), // 浅色模式渐变
-                              Color(0xFFeaf3f7),
-                              Color(0xFFf7f7f3),
-                              Color(0xFFe9ecef),
-                              Color(0xFFdbe3ea),
-                              Color(0xFFd3dde6),
-                            ],
-                            stops: [0.0, 0.18, 0.38, 0.60, 0.80, 1.0],
-                          ),
-                  ),
-                  child: Column(
-                    children: [
-                      // 固定 Header
-                      _buildHeader(context, themeService),
-                      // 主要内容区域
-                      Expanded(
-                        child: widget.content,
+                // 主要内容区域
+                Column(
+                  children: [
+                    // 主内容区域（包含header和content）
+                    Expanded(
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: themeService.isDarkMode 
+                              ? const Color(0xFF000000) // 深色模式纯黑色
+                              : null,
+                          gradient: themeService.isDarkMode 
+                              ? null
+                              : const LinearGradient(
+                                  begin: Alignment.topCenter,
+                                  end: Alignment.bottomCenter,
+                                  colors: [
+                                    Color(0xFFe6f3fb), // 浅色模式渐变
+                                    Color(0xFFeaf3f7),
+                                    Color(0xFFf7f7f3),
+                                    Color(0xFFe9ecef),
+                                    Color(0xFFdbe3ea),
+                                    Color(0xFFd3dde6),
+                                  ],
+                                  stops: [0.0, 0.18, 0.38, 0.60, 0.80, 1.0],
+                                ),
+                        ),
+                        child: Column(
+                          children: [
+                            // 固定 Header
+                            _buildHeader(context, themeService),
+                            // 主要内容区域
+                            Expanded(
+                              child: widget.content,
+                            ),
+                          ],
+                        ),
                       ),
-                    ],
-                  ),
+                    ),
+                    // 底部导航栏
+                    _buildBottomNavBar(themeService),
+                  ],
                 ),
-                // 用户菜单覆盖层
+                // 用户菜单覆盖层 - 现在会覆盖整个屏幕包括navbar
                 if (_showUserMenu)
                   UserMenu(
                     isDarkMode: themeService.isDarkMode,
@@ -88,8 +98,6 @@ class _MainLayoutState extends State<MainLayout> {
                   ),
               ],
             ),
-            // 固定底部导航栏
-            bottomNavigationBar: _buildBottomNavBar(themeService),
           ),
         );
       },
@@ -291,55 +299,56 @@ class _MainLayoutState extends State<MainLayout> {
           ),
         ),
       ),
-      child: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: navItems.asMap().entries.map((entry) {
-              int index = entry.key;
-              Map<String, dynamic> item = entry.value;
-              bool isSelected = !widget.isSearchMode && widget.currentBottomNavIndex == index;
-              
-              return GestureDetector(
-                onTap: () {
-                  widget.onBottomNavChanged(index);
-                },
-                behavior: HitTestBehavior.opaque, // 确保整个区域都可以点击
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        item['icon'],
-                        color: isSelected 
-                            ? const Color(0xFF27ae60) 
-                            : themeService.isDarkMode 
-                                ? const Color(0xFFb0b0b0)
-                                : const Color(0xFF7f8c8d),
-                        size: 24,
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        item['label'],
-                        style: GoogleFonts.poppins(
-                          fontSize: 12,
-                          fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                          color: isSelected 
-                              ? const Color(0xFF27ae60) 
-                              : themeService.isDarkMode 
-                                  ? const Color(0xFFb0b0b0)
-                                  : const Color(0xFF7f8c8d),
-                        ),
-                      ),
-                    ],
+      padding: EdgeInsets.only(
+        left: 0,
+        right: 0,
+        top: 8,
+        bottom: MediaQuery.of(context).padding.bottom + 8, // 手动处理底部安全区域
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: navItems.asMap().entries.map((entry) {
+          int index = entry.key;
+          Map<String, dynamic> item = entry.value;
+          bool isSelected = !widget.isSearchMode && widget.currentBottomNavIndex == index;
+          
+          return GestureDetector(
+            onTap: () {
+              widget.onBottomNavChanged(index);
+            },
+            behavior: HitTestBehavior.opaque, // 确保整个区域都可以点击
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    item['icon'],
+                    color: isSelected 
+                        ? const Color(0xFF27ae60) 
+                        : themeService.isDarkMode 
+                            ? const Color(0xFFb0b0b0)
+                            : const Color(0xFF7f8c8d),
+                    size: 24,
                   ),
-                ),
-              );
-            }).toList(),
-          ),
-        ),
+                  const SizedBox(height: 4),
+                  Text(
+                    item['label'],
+                    style: GoogleFonts.poppins(
+                      fontSize: 12,
+                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                      color: isSelected 
+                          ? const Color(0xFF27ae60) 
+                          : themeService.isDarkMode 
+                              ? const Color(0xFFb0b0b0)
+                              : const Color(0xFF7f8c8d),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }).toList(),
       ),
     );
   }

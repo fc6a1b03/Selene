@@ -5,6 +5,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../models/video_info.dart';
 import '../services/theme_service.dart';
+import '../utils/image_url.dart';
 
 /// 视频菜单选项
 enum VideoMenuAction {
@@ -37,6 +38,11 @@ class VideoMenuBottomSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     return Consumer<ThemeService>(
       builder: (context, themeService, child) {
+        return FutureBuilder<String>(
+          future: getImageUrl(videoInfo.cover, videoInfo.source),
+          builder: (context, snapshot) {
+            final String thumbUrl = snapshot.data ?? videoInfo.cover;
+            final headers = getImageRequestHeaders(thumbUrl, videoInfo.source);
         return Container(
           decoration: BoxDecoration(
             color: themeService.isDarkMode 
@@ -92,7 +98,8 @@ class VideoMenuBottomSheet extends StatelessWidget {
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(8),
                         child: CachedNetworkImage(
-                          imageUrl: _getImageUrl(videoInfo.cover, videoInfo.source),
+                          imageUrl: thumbUrl,
+                          httpHeaders: headers,
                           fit: BoxFit.cover,
                           placeholder: (context, url) => Container(
                             color: themeService.isDarkMode 
@@ -212,6 +219,8 @@ class VideoMenuBottomSheet extends StatelessWidget {
               SizedBox(height: MediaQuery.of(context).padding.bottom),
             ],
           ),
+        );
+          },
         );
       },
     );
@@ -526,17 +535,7 @@ class VideoMenuBottomSheet extends StatelessWidget {
     );
   }
 
-  /// 获取处理后的图片URL
-  String _getImageUrl(String originalUrl, String? source) {
-    if (source == 'douban' && originalUrl.isNotEmpty) {
-      // 将豆瓣图片域名替换为新的域名
-      return originalUrl.replaceAll(
-        RegExp(r'https?://[^/]+\.doubanio\.com'),
-        'https://img.doubanio.cmliussss.net'
-      );
-    }
-    return originalUrl;
-  }
+  
 
   /// 获取集数副标题
   String? _getEpisodeSubtitle() {

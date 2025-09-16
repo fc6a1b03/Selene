@@ -8,6 +8,7 @@ import '../services/api_service.dart';
 import '../services/page_cache_service.dart';
 import '../services/theme_service.dart';
 import 'video_card.dart';
+import '../utils/image_url.dart';
 import 'video_menu_bottom_sheet.dart';
 import 'shimmer_effect.dart';
 
@@ -181,7 +182,7 @@ class _ContinueWatchingSectionState extends State<ContinueWatchingSection>
   }
 
   /// 预加载图片
-  void _preloadImages(List<PlayRecord> records) {
+  Future<void> _preloadImages(List<PlayRecord> records) async {
     if (!mounted) return;
     
     // 只预加载前几个图片，避免过度预加载
@@ -190,24 +191,16 @@ class _ContinueWatchingSectionState extends State<ContinueWatchingSection>
       if (!mounted) break;
       
       final record = records[i];
-      final imageUrl = _getImageUrl(record.cover, record.source);
+      final imageUrl = await getImageUrl(record.cover, record.source);
       if (imageUrl.isNotEmpty) {
-        precacheImage(NetworkImage(imageUrl), context);
+        final headers = getImageRequestHeaders(imageUrl, record.source);
+        final provider = NetworkImage(imageUrl, headers: headers);
+        precacheImage(provider, context);
       }
     }
   }
 
-  /// 获取处理后的图片URL
-  String _getImageUrl(String originalUrl, String? source) {
-    if (source == 'douban' && originalUrl.isNotEmpty) {
-      // 将豆瓣图片域名替换为新的域名
-      return originalUrl.replaceAll(
-        RegExp(r'https?://[^/]+\.doubanio\.com'),
-        'https://img.doubanio.cmliussss.net'
-      );
-    }
-    return originalUrl;
-  }
+  
 
   /// 显示清空确认弹窗
   void _showClearConfirmation() {

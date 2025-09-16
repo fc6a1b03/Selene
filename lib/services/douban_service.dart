@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'dart:math';
 import '../models/douban_movie.dart';
 import 'api_service.dart';
 import 'douban_cache_service.dart';
+import 'user_data_service.dart';
 
 /// 豆瓣推荐数据请求参数
 class DoubanRecommendsParams {
@@ -64,6 +66,34 @@ class DoubanRequestParams {
 class DoubanService {
   static final DoubanCacheService _cacheService = DoubanCacheService();
   static bool _cacheInitialized = false;
+  static String? _uniqueOrigin;
+  
+  /// 生成唯一的 Origin 以避免统一限流
+  static String _getUniqueOrigin() {
+    if (_uniqueOrigin == null) {
+      final random = Random();
+      final domains = [
+        'movie.douban.com',
+        'm.douban.com',
+        'www.douban.com',
+      ];
+      final subdomains = [
+        'app',
+        'mobile',
+        'client',
+        'api',
+        'web',
+      ];
+      
+      // 随机选择域名和子域名组合
+      final baseDomain = domains[random.nextInt(domains.length)];
+      final subdomain = subdomains[random.nextInt(subdomains.length)];
+      final randomId = random.nextInt(9999).toString().padLeft(4, '0');
+      
+      _uniqueOrigin = 'https://$subdomain$randomId.$baseDomain';
+    }
+    return _uniqueOrigin!;
+  }
 
   /// 初始化缓存服务
   static Future<void> _initCache() async {
@@ -125,17 +155,42 @@ class DoubanService {
       // 缓存读取失败，继续执行网络请求
       print('读取缓存失败: $e');
     }
-    // 构建新的API URL
-    final apiUrl = 'https://m.douban.cmliussss.net/rexxar/api/v2/subject/recent_hot/$kind?start=${page * pageLimit}&limit=$pageLimit&category=$category&type=$type';
+    // 获取用户存储的豆瓣数据源选项
+    final dataSourceKey = await UserDataService.getDoubanDataSourceKey();
+    
+    // 根据数据源选项构建不同的基础URL
+    String apiUrl;
+    switch (dataSourceKey) {
+      case 'cdn_tencent':
+        apiUrl = 'https://m.douban.cmliussss.net/rexxar/api/v2/subject/recent_hot/$kind?start=${page * pageLimit}&limit=$pageLimit&category=$category&type=$type';
+        break;
+      case 'cdn_aliyun':
+        apiUrl = 'https://m.douban.cmliussss.com/rexxar/api/v2/subject/recent_hot/$kind?start=${page * pageLimit}&limit=$pageLimit&category=$category&type=$type';
+        break;
+      case 'direct':
+      default:
+        apiUrl = 'https://m.douban.com/rexxar/api/v2/subject/recent_hot/$kind?start=${page * pageLimit}&limit=$pageLimit&category=$category&type=$type';
+        break;
+    }
+    if (dataSourceKey == 'cors_proxy') {
+      apiUrl = 'https://ciao-cors.is-an.org/${Uri.encodeComponent(apiUrl)}';
+    }
     
     try {
+      final headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
+        'Referer': 'https://movie.douban.com/',
+        'Accept': 'application/json, text/plain, */*',
+      };
+      
+      // 如果使用 cors_proxy，添加 Origin 头
+      if (dataSourceKey == 'cors_proxy') {
+        headers['Origin'] = _getUniqueOrigin();
+      }
+      
       final response = await http.get(
         Uri.parse(apiUrl),
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
-          'Referer': 'https://movie.douban.com/',
-          'Accept': 'application/json, text/plain, */*',
-        },
+        headers: headers,
       ).timeout(const Duration(seconds: 30));
 
 
@@ -307,8 +362,23 @@ class DoubanService {
       tags.add(platform);
     }
 
-    // 构建API URL
-    final baseUrl = 'https://m.douban.cmliussss.net/rexxar/api/v2/${params.kind}/recommend';
+    // 获取用户存储的豆瓣数据源选项
+    final dataSourceKey = await UserDataService.getDoubanDataSourceKey();
+    
+    // 根据数据源选项构建不同的基础URL
+    String baseUrl;
+    switch (dataSourceKey) {
+      case 'cdn_tencent':
+        baseUrl = 'https://m.douban.cmliussss.net/rexxar/api/v2/${params.kind}/recommend';
+        break;
+      case 'cdn_aliyun':
+        baseUrl = 'https://m.douban.cmliussss.com/rexxar/api/v2/${params.kind}/recommend';
+        break;
+      case 'direct':
+      default:
+        baseUrl = 'https://m.douban.com/rexxar/api/v2/${params.kind}/recommend';
+        break;
+    }
     
     // 构建查询参数
     final queryParams = <String, String>{
@@ -326,16 +396,26 @@ class DoubanService {
     }
 
     final uri = Uri.parse(baseUrl).replace(queryParameters: queryParams);
-    final target = uri.toString();
+    String target = uri.toString();
+    if (dataSourceKey == 'cors_proxy') {
+      target = 'https://ciao-cors.is-an.org/${Uri.encodeComponent(target)}';
+    }
 
     try {
+      final headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
+        'Referer': 'https://movie.douban.com/',
+        'Accept': 'application/json, text/plain, */*',
+      };
+      
+      // 如果使用 cors_proxy，添加 Origin 头
+      if (dataSourceKey == 'cors_proxy') {
+        headers['Origin'] = _getUniqueOrigin();
+      }
+      
       final response = await http.get(
         Uri.parse(target),
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
-          'Referer': 'https://movie.douban.com/',
-          'Accept': 'application/json, text/plain, */*',
-        },
+        headers: headers,
       ).timeout(const Duration(seconds: 30));
 
       if (response.statusCode == 200) {

@@ -24,6 +24,8 @@ class UserMenu extends StatefulWidget {
 class _UserMenuState extends State<UserMenu> {
   String? _username;
   String _role = 'user';
+  String _doubanDataSource = '直连';
+  String _doubanImageSource = '直连';
 
   @override
   void initState() {
@@ -34,11 +36,15 @@ class _UserMenuState extends State<UserMenu> {
   Future<void> _loadUserInfo() async {
     final username = await UserDataService.getUsername();
     final cookies = await UserDataService.getCookies();
+    final doubanDataSource = await UserDataService.getDoubanDataSourceDisplayName();
+    final doubanImageSource = await UserDataService.getDoubanImageSourceDisplayName();
     
     if (mounted) {
       setState(() {
         _username = username;
         _role = _parseRoleFromCookies(cookies);
+        _doubanDataSource = doubanDataSource;
+        _doubanImageSource = doubanImageSource;
       });
     }
   }
@@ -165,6 +171,147 @@ class _UserMenuState extends State<UserMenu> {
     );
   }
 
+  Widget _buildOptionSelector({
+    required String title,
+    required String currentValue,
+    required List<String> options,
+    required Future<void> Function(String) onChanged,
+    required IconData icon,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () => _showOptionDialog(title, currentValue, options, onChanged),
+        child: Container(
+          padding: const EdgeInsets.symmetric(
+            horizontal: 20,
+            vertical: 16,
+          ),
+          child: Row(
+            children: [
+              Icon(
+                icon,
+                size: 20,
+                color: widget.isDarkMode 
+                    ? const Color(0xFF9ca3af)
+                    : const Color(0xFF6b7280),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: GoogleFonts.poppins(
+                        fontSize: 16,
+                        color: widget.isDarkMode 
+                            ? const Color(0xFFffffff)
+                            : const Color(0xFF1f2937),
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      currentValue,
+                      style: GoogleFonts.poppins(
+                        fontSize: 12,
+                        color: widget.isDarkMode 
+                            ? const Color(0xFF9ca3af)
+                            : const Color(0xFF6b7280),
+                        fontWeight: FontWeight.w400,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(
+                LucideIcons.chevronRight,
+                size: 16,
+                color: widget.isDarkMode 
+                    ? const Color(0xFF9ca3af)
+                    : const Color(0xFF6b7280),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showOptionDialog(String title, String currentValue, List<String> options, Future<void> Function(String) onChanged) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: widget.isDarkMode 
+              ? const Color(0xFF2c2c2c)
+              : Colors.white,
+          title: Text(
+            title,
+            style: GoogleFonts.poppins(
+              fontSize: 18,
+              color: widget.isDarkMode 
+                  ? const Color(0xFFffffff)
+                  : const Color(0xFF1f2937),
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: options.map((option) {
+              return Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: () async {
+                    await onChanged(option);
+                    if (context.mounted) {
+                      Navigator.of(context).pop();
+                    }
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 12,
+                      horizontal: 16,
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          currentValue == option 
+                              ? LucideIcons.check
+                              : LucideIcons.circle,
+                          size: 20,
+                          color: currentValue == option
+                              ? const Color(0xFF10b981)
+                              : (widget.isDarkMode 
+                                  ? const Color(0xFF9ca3af)
+                                  : const Color(0xFF6b7280)),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            option,
+                            style: GoogleFonts.poppins(
+                              fontSize: 16,
+                              color: widget.isDarkMode 
+                                  ? const Color(0xFFffffff)
+                                  : const Color(0xFF1f2937),
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Material(
@@ -233,6 +380,56 @@ class _UserMenuState extends State<UserMenu> {
                           ),
                         ],
                       ),
+                    ),
+                    // 分割线
+                    Container(
+                      height: 1,
+                      color: widget.isDarkMode 
+                          ? const Color(0xFF374151)
+                          : const Color(0xFFe5e7eb),
+                    ),
+                    // 豆瓣数据源选项
+                    _buildOptionSelector(
+                      title: '豆瓣数据源',
+                      currentValue: _doubanDataSource,
+                      options: const [
+                        '直连',
+                        'Cors Proxy By Zwei',
+                        '豆瓣 CDN By CMLiussss（腾讯云）',
+                        '豆瓣 CDN By CMLiussss（阿里云）',
+                      ],
+                      onChanged: (value) async {
+                        await UserDataService.saveDoubanDataSource(value);
+                        setState(() {
+                          _doubanDataSource = value;
+                        });
+                      },
+                      icon: LucideIcons.database,
+                    ),
+                    // 分割线
+                    Container(
+                      height: 1,
+                      color: widget.isDarkMode 
+                          ? const Color(0xFF374151)
+                          : const Color(0xFFe5e7eb),
+                    ),
+                    // 豆瓣图片源选项
+                    _buildOptionSelector(
+                      title: '豆瓣图片源',
+                      currentValue: _doubanImageSource,
+                      options: const [
+                        '直连',
+                        '豆瓣官方精品 CDN',
+                        '豆瓣 CDN By CMLiussss（腾讯云）',
+                        '豆瓣 CDN By CMLiussss（阿里云）',
+                      ],
+                      onChanged: (value) async {
+                        await UserDataService.saveDoubanImageSource(value);
+                        setState(() {
+                          _doubanImageSource = value;
+                        });
+                      },
+                      icon: LucideIcons.image,
                     ),
                     // 分割线
                     Container(

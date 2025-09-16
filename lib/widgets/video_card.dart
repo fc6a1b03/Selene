@@ -5,6 +5,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import '../models/video_info.dart';
 import '../services/theme_service.dart';
 import 'video_menu_bottom_sheet.dart';
+import '../utils/image_url.dart';
 
 /// 视频卡片组件
 class VideoCard extends StatelessWidget {
@@ -37,7 +38,12 @@ class VideoCard extends StatelessWidget {
         final bool shouldShowEpisodeInfo = _shouldShowEpisodeInfo();
         final bool shouldShowProgress = _shouldShowProgress();
         final String episodeText = shouldShowEpisodeInfo ? _getEpisodeText() : '';
-        final String imageUrl = _getImageUrl(videoInfo.cover, videoInfo.source);
+        
+        return FutureBuilder<String>(
+          future: getImageUrl(videoInfo.cover, videoInfo.source),
+          builder: (context, snapshot) {
+            final String imageUrl = snapshot.data ?? videoInfo.cover;
+            final headers = getImageRequestHeaders(imageUrl, videoInfo.source);
         
         return GestureDetector(
           onTap: onTap,
@@ -80,6 +86,7 @@ class VideoCard extends StatelessWidget {
                         fit: BoxFit.cover,
                         // 使用图片URL作为缓存key
                         cacheKey: imageUrl,
+                        httpHeaders: headers,
                         // 添加缓存配置
                         memCacheWidth: (width * MediaQuery.of(context).devicePixelRatio).round(),
                         memCacheHeight: (height * MediaQuery.of(context).devicePixelRatio).round(),
@@ -266,6 +273,8 @@ class VideoCard extends StatelessWidget {
         ),
       ),
     );
+          },
+        );
       },
     );
   }
@@ -328,17 +337,7 @@ class VideoCard extends StatelessWidget {
     }
   }
 
-  /// 获取处理后的图片URL
-  String _getImageUrl(String originalUrl, String? source) {
-    if (source == 'douban' && originalUrl.isNotEmpty) {
-      // 将豆瓣图片域名替换为新的域名
-      return originalUrl.replaceAll(
-        RegExp(r'https?://[^/]+\.doubanio\.com'),
-        'https://img.doubanio.cmliussss.net'
-      );
-    }
-    return originalUrl;
-  }
+  
 
   /// 判断是否应该显示评分
   bool _shouldShowRating() {
