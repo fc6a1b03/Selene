@@ -187,12 +187,13 @@ class DoubanService {
       if (dataSourceKey == 'cors_proxy') {
         headers['Origin'] = _getUniqueOrigin();
       }
+
+      print('apiUrl: $apiUrl');
       
       final response = await http.get(
         Uri.parse(apiUrl),
         headers: headers,
       ).timeout(const Duration(seconds: 30));
-
 
       if (response.statusCode == 200) {
         try {
@@ -204,7 +205,7 @@ class DoubanService {
             await _cacheService.set(
               cacheKey,
               doubanResponse.items.map((e) => e.toJson()).toList(),
-              const Duration(days: 1),
+              const Duration(hours: 6),
             );
           } catch (cacheError) {
             print('缓存数据失败: $cacheError');
@@ -401,6 +402,8 @@ class DoubanService {
       target = 'https://ciao-cors.is-an.org/${Uri.encodeComponent(target)}';
     }
 
+    print('target: $target');
+
     try {
       final headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
@@ -434,7 +437,7 @@ class DoubanService {
             await _cacheService.set(
               cacheKey,
               filteredItems.map((e) => e.toJson()).toList(),
-              const Duration(days: 1),
+              const Duration(hours: 6),
             );
           } catch (cacheError) {
             print('缓存数据失败: $cacheError');

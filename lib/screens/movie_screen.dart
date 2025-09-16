@@ -543,6 +543,7 @@ class _MovieScreenState extends State<MovieScreen> {
   Widget _buildFilterSection() {
     final themeService = Provider.of<ThemeService>(context);
     return Container(
+      width: double.infinity, // 设置为100%宽度
       margin: const EdgeInsets.all(16),
       padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
       decoration: BoxDecoration(
