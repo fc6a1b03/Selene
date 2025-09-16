@@ -7,6 +7,8 @@
     <!-- 本地网络发现权限 -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <!-- 震动权限 -->
+    <uses-permission android:name="android.permission.VIBRATE" />
     
     <application
         android:label="selene"

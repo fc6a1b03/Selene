@@ -42,6 +42,7 @@ class _MainLayoutState extends State<MainLayout> {
         return Theme(
           data: themeService.isDarkMode ? themeService.darkTheme : themeService.lightTheme,
           child: Scaffold(
+            resizeToAvoidBottomInset: !widget.isSearchMode,
             body: Stack(
               children: [
                 // 主要内容区域

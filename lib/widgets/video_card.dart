@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -48,6 +49,13 @@ class VideoCard extends StatelessWidget {
         return GestureDetector(
           onTap: onTap,
           onLongPress: (from == 'playrecord' || from == 'douban' || from == 'bangumi' || from == 'favorite' || from == 'search') ? () {
+            // 触发震动反馈
+            try {
+              HapticFeedback.mediumImpact();
+            } catch (e) {
+              // 震动失败时静默处理，不影响菜单显示
+            }
+            
             _showGlobalMenu(context);
           } : null,
           // 优化长按响应

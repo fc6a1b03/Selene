@@ -466,9 +466,6 @@ class _ContinueWatchingSectionState extends State<ContinueWatchingSection>
                     scrollDirection: Axis.horizontal,
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     itemCount: _playRecords.length,
-                    // 优化性能：添加itemExtent和缓存范围
-                    itemExtent: cardWidth + spacing,
-                    cacheExtent: (cardWidth + spacing) * 3, // 缓存3个item的范围
                     itemBuilder: (context, index) {
                       final playRecord = _playRecords[index];
                       return Container(
