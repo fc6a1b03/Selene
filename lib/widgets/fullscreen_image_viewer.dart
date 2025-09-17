@@ -5,9 +5,10 @@ import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:gal/gal.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:app_settings/app_settings.dart';
+import 'package:provider/provider.dart';
 import '../utils/image_url.dart';
+import '../services/theme_service.dart';
 
 /// 全屏图片查看器
 class FullscreenImageViewer extends StatefulWidget {
@@ -73,81 +74,82 @@ class _FullscreenImageViewerState extends State<FullscreenImageViewer> {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
-      builder: (context) => Container(
-        decoration: BoxDecoration(
-          color: Colors.black.withValues(alpha: 0.9),
-          borderRadius: const BorderRadius.only(
-            topLeft: Radius.circular(16),
-            topRight: Radius.circular(16),
-          ),
-        ),
-        child: SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // 拖拽指示器
-              Container(
-                width: 40,
-                height: 4,
-                margin: const EdgeInsets.symmetric(vertical: 12),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.3),
-                  borderRadius: BorderRadius.circular(2),
-                ),
+      builder: (context) => Consumer<ThemeService>(
+        builder: (context, themeService, child) {
+          final isDark = themeService.isDarkMode;
+          final backgroundColor = isDark 
+              ? const Color(0xFF1e1e1e).withValues(alpha: 0.95)
+              : const Color(0xFFffffff).withValues(alpha: 0.95);
+          final textColor = isDark ? Colors.white : const Color(0xFF2c3e50);
+          final secondaryTextColor = isDark 
+              ? Colors.white.withValues(alpha: 0.7)
+              : const Color(0xFF2c3e50).withValues(alpha: 0.7);
+          return Container(
+            decoration: BoxDecoration(
+              color: backgroundColor,
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(16),
+                topRight: Radius.circular(16),
               ),
-              
-              // 标题
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                child: Text(
-                  '保存图片',
-                  style: GoogleFonts.poppins(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
+            ),
+            child: SafeArea(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // 标题
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
+                    child: Text(
+                      '保存图片',
+                      style: GoogleFonts.poppins(
+                        color: textColor,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   ),
-                ),
-              ),
-              
-              // 选项列表
-              ListTile(
-                leading: Icon(
-                  Icons.download,
-                  color: Colors.white,
-                ),
-                title: Text(
-                  '保存到相册',
-                  style: GoogleFonts.poppins(
-                    color: Colors.white,
-                    fontSize: 16,
+                  
+                  // 选项列表
+                  ListTile(
+                    leading: Icon(
+                      Icons.download,
+                      color: textColor,
+                    ),
+                    title: Text(
+                      '保存到相册',
+                      style: GoogleFonts.poppins(
+                        color: textColor,
+                        fontSize: 16,
+                      ),
+                    ),
+                    onTap: () {
+                      Navigator.of(context).pop();
+                      _saveImageToGallery();
+                    },
                   ),
-                ),
-                onTap: () {
-                  Navigator.of(context).pop();
-                  _saveImageToGallery();
-                },
-              ),
-              
-              ListTile(
-                leading: Icon(
-                  Icons.close,
-                  color: Colors.white.withValues(alpha: 0.7),
-                ),
-                title: Text(
-                  '取消',
-                  style: GoogleFonts.poppins(
-                    color: Colors.white.withValues(alpha: 0.7),
-                    fontSize: 16,
+                  
+                  ListTile(
+                    leading: Icon(
+                      Icons.close,
+                      color: secondaryTextColor,
+                    ),
+                    title: Text(
+                      '取消',
+                      style: GoogleFonts.poppins(
+                        color: secondaryTextColor,
+                        fontSize: 16,
+                      ),
+                    ),
+                    onTap: () => Navigator.of(context).pop(),
                   ),
-                ),
-                onTap: () => Navigator.of(context).pop(),
+                  
+                  // 底部安全区域
+                  SizedBox(height: MediaQuery.of(context).padding.bottom),
+                ],
               ),
-              
-              // 底部安全区域
-              SizedBox(height: MediaQuery.of(context).padding.bottom),
-            ],
-          ),
-        ),
+            ),
+          );
+        },
       ),
     );
   }
@@ -169,34 +171,42 @@ class _FullscreenImageViewerState extends State<FullscreenImageViewer> {
         // 权限被拒绝，引导用户到设置页面
         showDialog(
           context: context,
-          builder: (context) => AlertDialog(
-            title: Text(
-              '需要存储权限',
-              style: GoogleFonts.poppins(),
-            ),
-            content: Text(
-              '保存图片到相册需要存储权限，请在设置中允许此权限。',
-              style: GoogleFonts.poppins(),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: Text(
-                  '取消',
-                  style: GoogleFonts.poppins(),
+          builder: (context) => Consumer<ThemeService>(
+            builder: (context, themeService, child) {
+              final isDark = themeService.isDarkMode;
+              final textColor = isDark ? Colors.white : const Color(0xFF2c3e50);
+              
+              return AlertDialog(
+                backgroundColor: isDark ? const Color(0xFF1e1e1e) : Colors.white,
+                title: Text(
+                  '需要存储权限',
+                  style: GoogleFonts.poppins(color: textColor),
                 ),
-              ),
-              TextButton(
-                onPressed: () async {
-                  Navigator.of(context).pop();
-                  await AppSettings.openAppSettings();
-                },
-                child: Text(
-                  '去设置',
-                  style: GoogleFonts.poppins(),
+                content: Text(
+                  '保存图片到相册需要存储权限，请在设置中允许此权限。',
+                  style: GoogleFonts.poppins(color: textColor),
                 ),
-              ),
-            ],
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: Text(
+                      '取消',
+                      style: GoogleFonts.poppins(color: textColor),
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: () async {
+                      Navigator.of(context).pop();
+                      await AppSettings.openAppSettings();
+                    },
+                    child: Text(
+                      '去设置',
+                      style: GoogleFonts.poppins(color: textColor),
+                    ),
+                  ),
+                ],
+              );
+            },
           ),
         );
       }
@@ -228,13 +238,19 @@ class _FullscreenImageViewerState extends State<FullscreenImageViewer> {
 
       // 显示保存提示
       if (mounted) {
+        final themeService = Provider.of<ThemeService>(context, listen: false);
+        final isDark = themeService.isDarkMode;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
               '正在保存图片...',
-              style: GoogleFonts.poppins(),
+              style: GoogleFonts.poppins(
+                color: isDark ? Colors.white : Colors.white,
+              ),
             ),
-            backgroundColor: Colors.black.withValues(alpha: 0.8),
+            backgroundColor: isDark 
+                ? const Color(0xFF1e1e1e).withValues(alpha: 0.9)
+                : const Color(0xFF2c3e50).withValues(alpha: 0.9),
             duration: const Duration(seconds: 2),
           ),
         );
@@ -258,7 +274,7 @@ class _FullscreenImageViewerState extends State<FullscreenImageViewer> {
           SnackBar(
             content: Text(
               '图片已保存到相册',
-              style: GoogleFonts.poppins(),
+              style: GoogleFonts.poppins(color: Colors.white),
             ),
             backgroundColor: Colors.green.withValues(alpha: 0.8),
             duration: const Duration(seconds: 2),
@@ -271,7 +287,7 @@ class _FullscreenImageViewerState extends State<FullscreenImageViewer> {
           SnackBar(
             content: Text(
               '保存失败: ${e.toString()}',
-              style: GoogleFonts.poppins(),
+              style: GoogleFonts.poppins(color: Colors.white),
             ),
             backgroundColor: Colors.red.withValues(alpha: 0.8),
             duration: const Duration(seconds: 3),
@@ -328,89 +344,98 @@ class _FullscreenImageViewerState extends State<FullscreenImageViewer> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      body: Stack(
-        children: [
-          // 背景点击区域
-          Positioned.fill(
-            child: GestureDetector(
-              onTap: () => Navigator.of(context).pop(), // 点击黑色区域关闭
-              child: Container(color: Colors.transparent),
-            ),
-          ),
-          
-          // 图片区域
-          Center(
-            child: GestureDetector(
-              onTap: () => Navigator.of(context).pop(), // 点击图片也关闭
-              onLongPress: _showSaveImageMenu, // 长按显示保存菜单
-              child: InteractiveViewer(
-                transformationController: _transformationController,
-                minScale: 0.5,
-                maxScale: 4.0,
-                child: FutureBuilder<String>(
-                  future: getImageUrl(widget.imageUrl, widget.source),
-                  builder: (context, snapshot) {
-                    final String imageUrl = snapshot.data ?? widget.imageUrl;
-                    final headers = getImageRequestHeaders(imageUrl, widget.source);
-                    
-                    return CachedNetworkImage(
-                      imageUrl: imageUrl,
-                      httpHeaders: headers,
-                      fit: BoxFit.contain,
-                      placeholder: (context, url) => Container(
-                        color: Colors.black,
-                        child: Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              CircularProgressIndicator(
-                                color: Colors.white,
-                              ),
-                              const SizedBox(height: 16),
-                              Text(
-                                '加载中...',
-                                style: GoogleFonts.poppins(
-                                  color: Colors.white,
-                                  fontSize: 16,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      errorWidget: (context, url, error) => Container(
-                        color: Colors.black,
-                        child: Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                Icons.error_outline,
-                                color: Colors.white,
-                                size: 48,
-                              ),
-                              const SizedBox(height: 16),
-                              Text(
-                                '图片加载失败',
-                                style: GoogleFonts.poppins(
-                                  color: Colors.white,
-                                  fontSize: 16,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    );
-                  },
+    return Consumer<ThemeService>(
+      builder: (context, themeService, child) {
+        final isDark = themeService.isDarkMode;
+        final backgroundColor = isDark ? Colors.black : Colors.white;
+        final textColor = isDark ? Colors.white : const Color(0xFF2c3e50);
+        final progressIndicatorColor = isDark ? Colors.white : const Color(0xFF2c3e50);
+        
+        return Scaffold(
+          backgroundColor: backgroundColor,
+          body: Stack(
+            children: [
+              // 背景点击区域
+              Positioned.fill(
+                child: GestureDetector(
+                  onTap: () => Navigator.of(context).pop(), // 点击背景区域关闭
+                  child: Container(color: Colors.transparent),
                 ),
               ),
-            ),
+              
+              // 图片区域
+              Center(
+                child: GestureDetector(
+                  onTap: () => Navigator.of(context).pop(), // 点击图片也关闭
+                  onLongPress: _showSaveImageMenu, // 长按显示保存菜单
+                  child: InteractiveViewer(
+                    transformationController: _transformationController,
+                    minScale: 0.5,
+                    maxScale: 4.0,
+                    child: FutureBuilder<String>(
+                      future: getImageUrl(widget.imageUrl, widget.source),
+                      builder: (context, snapshot) {
+                        final String imageUrl = snapshot.data ?? widget.imageUrl;
+                        final headers = getImageRequestHeaders(imageUrl, widget.source);
+                        
+                        return CachedNetworkImage(
+                          imageUrl: imageUrl,
+                          httpHeaders: headers,
+                          fit: BoxFit.contain,
+                          placeholder: (context, url) => Container(
+                            color: backgroundColor,
+                            child: Center(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  CircularProgressIndicator(
+                                    color: progressIndicatorColor,
+                                  ),
+                                  const SizedBox(height: 16),
+                                  Text(
+                                    '加载中...',
+                                    style: GoogleFonts.poppins(
+                                      color: textColor,
+                                      fontSize: 16,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          errorWidget: (context, url, error) => Container(
+                            color: backgroundColor,
+                            child: Center(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.error_outline,
+                                    color: textColor,
+                                    size: 48,
+                                  ),
+                                  const SizedBox(height: 16),
+                                  Text(
+                                    '图片加载失败',
+                                    style: GoogleFonts.poppins(
+                                      color: textColor,
+                                      fontSize: 16,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 }
