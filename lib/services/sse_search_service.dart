@@ -109,12 +109,32 @@ class SSESearchService {
       
       _subscription = _client!.send(request).asStream().listen(
         _handleSSEResponse,
-        onError: _handleError,
+        onError: (error) {
+          // 静默处理连接关闭错误，不显示给用户
+          final errorString = error.toString().toLowerCase();
+          if (errorString.contains('connection closed') || 
+              errorString.contains('clientexception') ||
+              errorString.contains('connection terminated')) {
+            // 连接被关闭，这是正常情况，静默处理
+            return;
+          }
+          _handleError(error);
+        },
         onDone: _handleDone,
       );
 
     } catch (e) {
       _isConnected = false;
+      
+      // 检查是否是连接关闭错误，如果是则静默处理
+      final errorString = e.toString().toLowerCase();
+      if (errorString.contains('connection closed') || 
+          errorString.contains('clientexception') ||
+          errorString.contains('connection terminated')) {
+        // 连接被关闭，这是正常情况，静默处理
+        return;
+      }
+      
       _errorController?.add('连接失败: ${e.toString()}');
       rethrow;
     }

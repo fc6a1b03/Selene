@@ -14,9 +14,18 @@ import '../widgets/video_menu_bottom_sheet.dart';
 import '../widgets/favorites_grid.dart';
 import '../widgets/search_result_agg_grid.dart';
 
+class SelectorOption {
+  final String label;
+  final String value;
+
+  const SelectorOption({required this.label, required this.value});
+}
+
+enum SortOrder { none, asc, desc }
+
 class SearchScreen extends StatefulWidget {
   final Function(VideoInfo)? onVideoTap;
-  
+
   const SearchScreen({
     super.key,
     this.onVideoTap,
@@ -26,9 +35,11 @@ class SearchScreen extends StatefulWidget {
   State<SearchScreen> createState() => _SearchScreenState();
 }
 
-class _SearchScreenState extends State<SearchScreen> with TickerProviderStateMixin {
+class _SearchScreenState extends State<SearchScreen>
+    with TickerProviderStateMixin {
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
+  final ScrollController _scrollController = ScrollController();
   String _searchQuery = '';
   List<String> _searchHistory = [];
   List<SearchResult> _searchResults = [];
@@ -38,17 +49,59 @@ class _SearchScreenState extends State<SearchScreen> with TickerProviderStateMix
   SearchProgress? _searchProgress;
   Timer? _updateTimer; // 用于防抖的定时器
   bool _useAggregatedView = true; // 是否使用聚合视图，默认开启
-  
+
+  // 筛选和排序状态
+  String _selectedSource = 'all';
+  String _selectedYear = 'all';
+  String _selectedTitle = 'all';
+  SortOrder _yearSortOrder = SortOrder.none;
+
   // 长按删除相关状态
   String? _deletingHistoryItem;
   AnimationController? _deleteAnimationController;
   Animation<double>? _deleteAnimation;
-  
+
   late SSESearchService _searchService;
   StreamSubscription<List<SearchResult>>? _incrementalResultsSubscription;
   StreamSubscription<SearchProgress>? _progressSubscription;
   StreamSubscription<String>? _errorSubscription;
   StreamSubscription<SearchEvent>? _eventSubscription;
+
+  List<SearchResult> get _filteredSearchResults {
+    List<SearchResult> results = List.from(_searchResults);
+
+    // Source filter
+    if (_selectedSource != 'all') {
+      results = results.where((r) => r.sourceName == _selectedSource).toList();
+    }
+
+    // Year filter
+    if (_selectedYear != 'all') {
+      results = results.where((r) => r.year == _selectedYear).toList();
+    }
+
+    // Title filter
+    if (_selectedTitle != 'all') {
+      results = results.where((r) => r.title == _selectedTitle).toList();
+    }
+
+    // Year sort
+    if (_yearSortOrder == SortOrder.desc) {
+      results.sort((a, b) {
+        final yearA = int.tryParse(a.year) ?? 0;
+        final yearB = int.tryParse(b.year) ?? 0;
+        return yearB.compareTo(yearA);
+      });
+    } else if (_yearSortOrder == SortOrder.asc) {
+      results.sort((a, b) {
+        final yearA = int.tryParse(a.year) ?? 0;
+        final yearB = int.tryParse(b.year) ?? 0;
+        return yearA.compareTo(yearB);
+      });
+    }
+
+    return results;
+  }
 
   @override
   void initState() {
@@ -56,7 +109,8 @@ class _SearchScreenState extends State<SearchScreen> with TickerProviderStateMix
     _searchService = SSESearchService();
     _setupSearchListeners();
     _loadSearchHistory();
-    
+
+
     // 初始化删除动画控制器
     _deleteAnimationController = AnimationController(
       duration: const Duration(milliseconds: 1500), // 1.5秒变红动画
@@ -75,6 +129,7 @@ class _SearchScreenState extends State<SearchScreen> with TickerProviderStateMix
   void dispose() {
     _searchController.dispose();
     _searchFocusNode.dispose();
+    _scrollController.dispose();
     _incrementalResultsSubscription?.cancel();
     _progressSubscription?.cancel();
     _errorSubscription?.cancel();
@@ -92,7 +147,7 @@ class _SearchScreenState extends State<SearchScreen> with TickerProviderStateMix
     _progressSubscription?.cancel();
     _errorSubscription?.cancel();
     _eventSubscription?.cancel();
-    
+
     // 监听搜索事件
     _eventSubscription = _searchService.eventStream.listen((event) {
       if (mounted) {
@@ -100,7 +155,8 @@ class _SearchScreenState extends State<SearchScreen> with TickerProviderStateMix
           setState(() {
             _hasReceivedStart = true;
           });
-        } else if (event is SearchSourceErrorEvent || event is SearchSourceResultEvent) {
+        } else if (event is SearchSourceErrorEvent ||
+            event is SearchSourceResultEvent) {
           // 收到源错误或源结果事件时，确保已标记为收到start消息
           setState(() {
             _hasReceivedStart = true;
@@ -110,11 +166,12 @@ class _SearchScreenState extends State<SearchScreen> with TickerProviderStateMix
     });
 
     // 监听增量搜索结果
-    _incrementalResultsSubscription = _searchService.incrementalResultsStream.listen((incrementalResults) {
+    _incrementalResultsSubscription =
+        _searchService.incrementalResultsStream.listen((incrementalResults) {
       if (mounted && incrementalResults.isNotEmpty) {
         // 将增量结果添加到现有结果列表中
         _searchResults.addAll(incrementalResults);
-        
+
         // 使用防抖机制，避免过于频繁的UI更新，同时确保用户交互不受影响
         _updateTimer?.cancel();
         _updateTimer = Timer(const Duration(milliseconds: 50), () {
@@ -146,13 +203,13 @@ class _SearchScreenState extends State<SearchScreen> with TickerProviderStateMix
       if (mounted) {
         // 检查是否是连接关闭错误，如果是则忽略
         final errorString = error.toLowerCase();
-        if (errorString.contains('connection closed') || 
+        if (errorString.contains('connection closed') ||
             errorString.contains('clientexception') ||
             errorString.contains('connection terminated')) {
           // 连接被关闭，这是正常情况，不显示错误
           return;
         }
-        
+
         setState(() {
           _searchError = error;
         });
@@ -183,7 +240,7 @@ class _SearchScreenState extends State<SearchScreen> with TickerProviderStateMix
     try {
       // 刷新缓存数据
       await PageCacheService().refreshSearchHistory(context);
-      
+
       // 重新获取搜索历史数据
       final result = await PageCacheService().getSearchHistory(context);
       if (mounted) {
@@ -209,18 +266,19 @@ class _SearchScreenState extends State<SearchScreen> with TickerProviderStateMix
   /// 添加搜索历史（本地状态、缓存、服务器）
   void addSearchHistory(String query) {
     if (query.trim().isEmpty) return;
-    
+
     final trimmedQuery = query.trim();
-    
+
     // 立即添加到缓存
     PageCacheService().addSearchHistory(trimmedQuery, context);
-    
+
     // 立即更新本地状态和UI
     if (mounted) {
       setState(() {
         // 检查是否已存在相同的搜索词（区分大小写）
-        final existingIndex = _searchHistory.indexWhere((item) => item == trimmedQuery);
-        
+        final existingIndex =
+            _searchHistory.indexWhere((item) => item == trimmedQuery);
+
         if (existingIndex == -1) {
           // 不存在，添加到列表开头
           _searchHistory.insert(0, trimmedQuery);
@@ -234,7 +292,6 @@ class _SearchScreenState extends State<SearchScreen> with TickerProviderStateMix
     }
   }
 
-
   /// 显示清空确认弹窗
   void _showClearConfirmation() {
     showDialog(
@@ -243,110 +300,109 @@ class _SearchScreenState extends State<SearchScreen> with TickerProviderStateMix
         return Consumer<ThemeService>(
           builder: (context, themeService, child) {
             return AlertDialog(
-              backgroundColor: themeService.isDarkMode 
-                  ? const Color(0xFF1e1e1e)
-                  : Colors.white,
+              backgroundColor:
+                  themeService.isDarkMode ? const Color(0xFF1e1e1e) : Colors.white,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),
               ),
               contentPadding: const EdgeInsets.all(24),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // 图标
-              Container(
-                width: 64,
-                height: 64,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFe74c3c).withOpacity(0.1),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.delete_outline,
-                  color: Color(0xFFe74c3c),
-                  size: 32,
-                ),
-              ),
-              const SizedBox(height: 20),
-              // 标题
-              Text(
-                '清空搜索历史',
-                style: GoogleFonts.poppins(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                  color: themeService.isDarkMode 
-                      ? const Color(0xFFffffff)
-                      : const Color(0xFF2c3e50),
-                ),
-              ),
-              const SizedBox(height: 12),
-              // 描述
-              Text(
-                '确定要清空所有搜索历史吗？此操作无法撤销。',
-                style: GoogleFonts.poppins(
-                  fontSize: 14,
-                  color: themeService.isDarkMode 
-                      ? const Color(0xFFb0b0b0)
-                      : const Color(0xFF7f8c8d),
-                  height: 1.4,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 24),
-              // 按钮
-              Row(
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Expanded(
-                    child: TextButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      style: TextButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),
-                      child: Text(
-                        '取消',
-                        style: GoogleFonts.poppins(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                          color: themeService.isDarkMode 
-                              ? const Color(0xFFb0b0b0)
-                              : const Color(0xFF7f8c8d),
-                        ),
-                      ),
+                  // 图标
+                  Container(
+                    width: 64,
+                    height: 64,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFe74c3c).withOpacity(0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.delete_outline,
+                      color: Color(0xFFe74c3c),
+                      size: 32,
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: () {
-                        Navigator.of(context).pop();
-                        _clearSearchHistory();
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFe74c3c),
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        elevation: 0,
-                      ),
-                      child: Text(
-                        '清空',
-                        style: GoogleFonts.poppins(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                          color: Colors.white,
-                        ),
-                      ),
+                  const SizedBox(height: 20),
+                  // 标题
+                  Text(
+                    '清空搜索历史',
+                    style: GoogleFonts.poppins(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: themeService.isDarkMode
+                          ? const Color(0xFFffffff)
+                          : const Color(0xFF2c3e50),
                     ),
+                  ),
+                  const SizedBox(height: 12),
+                  // 描述
+                  Text(
+                    '确定要清空所有搜索历史吗？此操作无法撤销。',
+                    style: GoogleFonts.poppins(
+                      fontSize: 14,
+                      color: themeService.isDarkMode
+                          ? const Color(0xFFb0b0b0)
+                          : const Color(0xFF7f8c8d),
+                      height: 1.4,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 24),
+                  // 按钮
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextButton(
+                          onPressed: () => Navigator.of(context).pop(),
+                          style: TextButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                          child: Text(
+                            '取消',
+                            style: GoogleFonts.poppins(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                              color: themeService.isDarkMode
+                                  ? const Color(0xFFb0b0b0)
+                                  : const Color(0xFF7f8c8d),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () {
+                            Navigator.of(context).pop();
+                            _clearSearchHistory();
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFFe74c3c),
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            elevation: 0,
+                          ),
+                          child: Text(
+                            '清空',
+                            style: GoogleFonts.poppins(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
-            ],
-          ),
-        );
+            );
           },
         );
       },
@@ -357,7 +413,7 @@ class _SearchScreenState extends State<SearchScreen> with TickerProviderStateMix
   Future<void> _clearSearchHistory() async {
     try {
       final result = await PageCacheService().clearSearchHistory(context);
-      
+
       if (result.success) {
         // 立即清空本地状态
         if (mounted) {
@@ -367,7 +423,7 @@ class _SearchScreenState extends State<SearchScreen> with TickerProviderStateMix
         }
       } else {
         // 异常时异步刷新搜索历史以恢复数据
-        _refreshSearchHistory();  
+        _refreshSearchHistory();
       }
     } catch (e) {
       // 异常时异步刷新搜索历史以恢复数据
@@ -397,7 +453,8 @@ class _SearchScreenState extends State<SearchScreen> with TickerProviderStateMix
   /// 删除单个搜索历史
   Future<void> _deleteSearchHistory(String historyItem) async {
     try {
-      final result = await PageCacheService().deleteSearchHistory(historyItem, context);
+      final result =
+          await PageCacheService().deleteSearchHistory(historyItem, context);
 
       if (result.success) {
         // 立即从UI中移除
@@ -419,7 +476,7 @@ class _SearchScreenState extends State<SearchScreen> with TickerProviderStateMix
 
   void _performSearch(String query) async {
     if (query.trim().isEmpty) return;
-    
+
     setState(() {
       _searchQuery = query.trim();
       _hasSearched = true;
@@ -427,6 +484,11 @@ class _SearchScreenState extends State<SearchScreen> with TickerProviderStateMix
       _searchError = null;
       _searchResults.clear();
       _searchProgress = null; // 清空进度信息
+      // 重置筛选和排序
+      _selectedSource = 'all';
+      _selectedYear = 'all';
+      _selectedTitle = 'all';
+      _yearSortOrder = SortOrder.none;
     });
 
     // 添加到搜索历史
@@ -438,20 +500,20 @@ class _SearchScreenState extends State<SearchScreen> with TickerProviderStateMix
     try {
       // 开始 SSE 搜索
       await _searchService.startSearch(_searchQuery);
-      
+
       // 重新设置监听器，确保流控制器已初始化
       _setupSearchListeners();
     } catch (e) {
       if (mounted) {
         // 检查是否是连接关闭错误，如果是则忽略
         final errorString = e.toString().toLowerCase();
-        if (errorString.contains('connection closed') || 
+        if (errorString.contains('connection closed') ||
             errorString.contains('clientexception') ||
             errorString.contains('connection terminated')) {
           // 连接被关闭，这是正常情况，不显示错误
           return;
         }
-        
+
         setState(() {
           _searchError = e.toString();
         });
@@ -477,36 +539,43 @@ class _SearchScreenState extends State<SearchScreen> with TickerProviderStateMix
   Widget build(BuildContext context) {
     return Consumer<ThemeService>(
       builder: (context, themeService, child) {
-        return SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const SizedBox(height: 20),
-                    // 搜索框
-                    _buildSearchBox(themeService),
-                    const SizedBox(height: 24),
-                    
-                    if (!_hasSearched) ...[
-                      // 搜索历史（只有在从未搜索过时显示）
-                      _buildSearchHistory(themeService),
-                    ] else ...[
-                      // 搜索进度和结果
-                      if (_searchError != null)
-                        _buildSearchError(themeService),
+        return Scaffold(
+          backgroundColor: themeService.isDarkMode
+              ? const Color(0xFF121212)
+              : const Color(0xFFf5f5f5),
+          body: SingleChildScrollView(
+            controller: _scrollController,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: 20),
+                      // 搜索框
+                      _buildSearchBox(themeService),
+                      const SizedBox(height: 16),
+
+                      if (!_hasSearched) ...[
+                        // 搜索进度和结果
+                        if (_searchError != null)
+                          _buildSearchError(themeService),
+                      ],
                     ],
-                  ],
+                  ),
                 ),
-              ),
-              if (_hasSearched) ...[
-                // 搜索结果区域，不添加额外padding
-                _buildSearchResults(themeService),
+                if (!_hasSearched) ...[
+                  // 搜索历史（只有在从未搜索过时显示）
+                  _buildSearchHistory(themeService),
+                ],
+                if (_hasSearched) ...[
+                  // 搜索结果区域，不添加额外padding
+                  _buildSearchResults(themeService),
+                ],
               ],
-            ],
+            ),
           ),
         );
       },
@@ -516,13 +585,11 @@ class _SearchScreenState extends State<SearchScreen> with TickerProviderStateMix
   Widget _buildSearchBox(ThemeService themeService) {
     return Container(
       decoration: BoxDecoration(
-        color: themeService.isDarkMode 
-            ? const Color(0xFF1e1e1e)
-            : Colors.white,
+        color: themeService.isDarkMode ? const Color(0xFF1e1e1e) : Colors.white,
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: themeService.isDarkMode 
+            color: themeService.isDarkMode
                 ? Colors.black.withOpacity(0.3)
                 : Colors.black.withOpacity(0.05),
             blurRadius: 10,
@@ -539,7 +606,7 @@ class _SearchScreenState extends State<SearchScreen> with TickerProviderStateMix
         decoration: InputDecoration(
           hintText: '搜索电影、剧集、动漫...',
           hintStyle: GoogleFonts.poppins(
-            color: themeService.isDarkMode 
+            color: themeService.isDarkMode
                 ? const Color(0xFF666666)
                 : const Color(0xFF95a5a6),
             fontSize: 16,
@@ -552,7 +619,7 @@ class _SearchScreenState extends State<SearchScreen> with TickerProviderStateMix
                 IconButton(
                   icon: Icon(
                     LucideIcons.x,
-                    color: themeService.isDarkMode 
+                    color: themeService.isDarkMode
                         ? const Color(0xFFb0b0b0)
                         : const Color(0xFF7f8c8d),
                     size: 20,
@@ -563,9 +630,9 @@ class _SearchScreenState extends State<SearchScreen> with TickerProviderStateMix
               IconButton(
                 icon: Icon(
                   LucideIcons.search,
-                  color: _searchQuery.trim().isNotEmpty 
-                      ? const Color(0xFF27ae60)  // 有内容时绿色
-                      : themeService.isDarkMode 
+                  color: _searchQuery.trim().isNotEmpty
+                      ? const Color(0xFF27ae60) // 有内容时绿色
+                      : themeService.isDarkMode
                           ? const Color(0xFFb0b0b0)
                           : const Color(0xFF7f8c8d), // 无内容时灰色
                   size: 20,
@@ -584,7 +651,7 @@ class _SearchScreenState extends State<SearchScreen> with TickerProviderStateMix
         ),
         style: GoogleFonts.poppins(
           fontSize: 16,
-          color: themeService.isDarkMode 
+          color: themeService.isDarkMode
               ? const Color(0xFFffffff)
               : const Color(0xFF2c3e50),
         ),
@@ -605,45 +672,51 @@ class _SearchScreenState extends State<SearchScreen> with TickerProviderStateMix
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-        Text(
-          '搜索历史',
-          style: GoogleFonts.poppins(
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
-            color: themeService.isDarkMode 
-                ? const Color(0xFFffffff)
-                : const Color(0xFF2c3e50),
-          ),
-        ),
-            TextButton(
-              onPressed: _showClearConfirmation,
-              style: TextButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                minimumSize: Size.zero,
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                '搜索历史',
+                style: GoogleFonts.poppins(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: themeService.isDarkMode
+                      ? const Color(0xFFffffff)
+                      : const Color(0xFF2c3e50),
+                ),
               ),
-              child: Text(
-                '清空',
+              TextButton(
+                onPressed: _showClearConfirmation,
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                child: Text(
+                  '清空',
                   style: GoogleFonts.poppins(
                     fontSize: 14,
-                    color: themeService.isDarkMode 
+                    color: themeService.isDarkMode
                         ? const Color(0xFFb0b0b0)
                         : const Color(0xFF7f8c8d),
                   ),
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
         const SizedBox(height: 16),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: _searchHistory.map((history) {
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0),
+          child: Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: _searchHistory.map((history) {
             final isDeleting = _deletingHistoryItem == history;
-            
+
             return GestureDetector(
               onTap: () {
                 if (!isDeleting) {
@@ -668,48 +741,48 @@ class _SearchScreenState extends State<SearchScreen> with TickerProviderStateMix
                   Color backgroundColor;
                   Color textColor;
                   Color borderColor;
-                  
+
                   if (isDeleting) {
                     final animationValue = _deleteAnimation?.value ?? 0.0;
-                    
+
                     // 背景色从正常色渐变到红色
                     backgroundColor = Color.lerp(
-                      themeService.isDarkMode 
+                      themeService.isDarkMode
                           ? const Color(0xFF1e1e1e)
                           : Colors.white,
                       const Color(0xFFe74c3c).withOpacity(0.2),
                       animationValue,
                     )!;
-                    
+
                     // 文字色从正常色渐变到红色
                     textColor = Color.lerp(
-                      themeService.isDarkMode 
+                      themeService.isDarkMode
                           ? const Color(0xFFffffff)
                           : const Color(0xFF2c3e50),
                       const Color(0xFFe74c3c),
                       animationValue,
                     )!;
-                    
+
                     // 边框色从正常色渐变到红色
                     borderColor = Color.lerp(
-                      themeService.isDarkMode 
+                      themeService.isDarkMode
                           ? const Color(0xFF333333)
                           : const Color(0xFFe9ecef),
                       const Color(0xFFe74c3c),
                       animationValue,
                     )!;
                   } else {
-                    backgroundColor = themeService.isDarkMode 
+                    backgroundColor = themeService.isDarkMode
                         ? const Color(0xFF1e1e1e)
                         : Colors.white;
-                    textColor = themeService.isDarkMode 
+                    textColor = themeService.isDarkMode
                         ? const Color(0xFFffffff)
                         : const Color(0xFF2c3e50);
-                    borderColor = themeService.isDarkMode 
+                    borderColor = themeService.isDarkMode
                         ? const Color(0xFF333333)
                         : const Color(0xFFe9ecef);
                   }
-                  
+
                   return Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 16,
@@ -748,11 +821,11 @@ class _SearchScreenState extends State<SearchScreen> with TickerProviderStateMix
               ),
             );
           }).toList(),
+          ),
         ),
       ],
     );
   }
-
 
   /// 构建搜索错误显示
   Widget _buildSearchError(ThemeService themeService) {
@@ -772,9 +845,9 @@ class _SearchScreenState extends State<SearchScreen> with TickerProviderStateMix
       ),
       child: Row(
         children: [
-          Icon(
+          const Icon(
             Icons.error_outline,
-            color: const Color(0xFFe74c3c),
+            color: Color(0xFFe74c3c),
             size: 20,
           ),
           const SizedBox(width: 12),
@@ -812,7 +885,7 @@ class _SearchScreenState extends State<SearchScreen> with TickerProviderStateMix
     if (_hasSearched) {
       return _buildSearchResultsList(themeService);
     }
-    
+
     // 默认返回空容器
     return const SizedBox.shrink();
   }
@@ -835,7 +908,7 @@ class _SearchScreenState extends State<SearchScreen> with TickerProviderStateMix
                     style: GoogleFonts.poppins(
                       fontSize: 18,
                       fontWeight: FontWeight.w600,
-                      color: themeService.isDarkMode 
+                      color: themeService.isDarkMode
                           ? const Color(0xFFffffff)
                           : const Color(0xFF2c3e50),
                     ),
@@ -848,7 +921,7 @@ class _SearchScreenState extends State<SearchScreen> with TickerProviderStateMix
                         style: GoogleFonts.poppins(
                           fontSize: 14,
                           fontWeight: FontWeight.w400,
-                          color: themeService.isDarkMode 
+                          color: themeService.isDarkMode
                               ? const Color(0xFFb0b0b0)
                               : const Color(0xFF7f8c8d),
                         ),
@@ -861,7 +934,8 @@ class _SearchScreenState extends State<SearchScreen> with TickerProviderStateMix
                           height: 16,
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF27ae60)),
+                            valueColor:
+                                AlwaysStoppedAnimation<Color>(Color(0xFF27ae60)),
                           ),
                         ),
                       ),
@@ -872,14 +946,14 @@ class _SearchScreenState extends State<SearchScreen> with TickerProviderStateMix
               if (_hasSearched && _searchResults.isNotEmpty) ...[
                 const SizedBox(height: 8),
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
                   children: [
+                    Expanded(child: _buildFilterSection(themeService)),
                     Text(
                       '聚合',
                       style: GoogleFonts.poppins(
                         fontSize: 14,
                         fontWeight: FontWeight.w500,
-                        color: themeService.isDarkMode 
+                        color: themeService.isDarkMode
                             ? const Color(0xFFffffff)
                             : const Color(0xFF2c3e50),
                       ),
@@ -896,11 +970,12 @@ class _SearchScreenState extends State<SearchScreen> with TickerProviderStateMix
                         activeColor: Colors.white,
                         activeTrackColor: const Color(0xFF27ae60), // 改为绿色
                         inactiveThumbColor: Colors.white,
-                        inactiveTrackColor: themeService.isDarkMode 
+                        inactiveTrackColor: themeService.isDarkMode
                             ? const Color(0xFF404040)
                             : const Color(0xFFE0E0E0),
                         materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        trackOutlineColor: WidgetStateProperty.all(Colors.transparent), // 去掉边框
+                        trackOutlineColor:
+                            WidgetStateProperty.all(Colors.transparent), // 去掉边框
                       ),
                     ),
                   ],
@@ -909,12 +984,12 @@ class _SearchScreenState extends State<SearchScreen> with TickerProviderStateMix
             ],
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 12),
         // Grid区域 - 无padding，占满宽度
-        _useAggregatedView 
+        _useAggregatedView
             ? SearchResultAggGrid(
                 key: ValueKey('agg_${_searchResults.length}'), // 添加key以优化重渲染
-                results: _searchResults,
+                results: _filteredSearchResults,
                 themeService: themeService,
                 onVideoTap: widget.onVideoTap,
                 onGlobalMenuAction: _onGlobalMenuAction,
@@ -922,7 +997,7 @@ class _SearchScreenState extends State<SearchScreen> with TickerProviderStateMix
               )
             : _SearchResultsGrid(
                 key: ValueKey('list_${_searchResults.length}'), // 添加key以优化重渲染
-                results: _searchResults,
+                results: _filteredSearchResults,
                 themeService: themeService,
                 onVideoTap: widget.onVideoTap,
                 onGlobalMenuAction: _onGlobalMenuAction,
@@ -1010,7 +1085,8 @@ class _SearchScreenState extends State<SearchScreen> with TickerProviderStateMix
       };
 
       // 使用统一的收藏方法（包含缓存操作和API调用）
-      final result = await PageCacheService().addFavorite(videoInfo.source, videoInfo.id, favoriteData, context);
+      final result = await PageCacheService()
+          .addFavorite(videoInfo.source, videoInfo.id, favoriteData, context);
 
       if (result.success) {
         // 通知UI刷新收藏状态
@@ -1064,14 +1140,15 @@ class _SearchScreenState extends State<SearchScreen> with TickerProviderStateMix
     try {
       // 先立即从UI中移除该项目
       FavoritesGrid.removeFavoriteFromUI(videoInfo.source, videoInfo.id);
-      
+
       // 通知继续观看组件刷新收藏状态
       if (mounted) {
         setState(() {});
       }
-      
+
       // 使用统一的取消收藏方法（包含缓存操作和API调用）
-      final result = await PageCacheService().removeFavorite(videoInfo.source, videoInfo.id, context);
+      final result = await PageCacheService()
+          .removeFavorite(videoInfo.source, videoInfo.id, context);
 
       if (!result.success) {
         // 显示错误提示
@@ -1116,6 +1193,268 @@ class _SearchScreenState extends State<SearchScreen> with TickerProviderStateMix
       _refreshFavorites();
     }
   }
+
+  // 筛选器相关方法
+
+  List<SelectorOption> get _sourceOptions {
+    final sources = _searchResults.map((r) => r.sourceName).toSet().toList();
+    sources.sort();
+    final options =
+        sources.map((s) => SelectorOption(label: s, value: s)).toList();
+    return [
+      const SelectorOption(label: '全部来源', value: 'all'),
+      ...options,
+    ];
+  }
+
+  List<SelectorOption> get _yearOptions {
+    final years =
+        _searchResults.map((r) => r.year).where((y) => y.isNotEmpty).toSet().toList();
+    years.sort((a, b) => b.compareTo(a)); // Sort descending
+    final options =
+        years.map((y) => SelectorOption(label: y, value: y)).toList();
+    return [
+      const SelectorOption(label: '全部年份', value: 'all'),
+      ...options,
+    ];
+  }
+
+  List<SelectorOption> get _titleOptions {
+    final titles = _searchResults.map((r) => r.title).toSet().toList();
+    titles.sort();
+    final options =
+        titles.map((t) => SelectorOption(label: t, value: t)).toList();
+    return [
+      const SelectorOption(label: '全部标题', value: 'all'),
+      ...options,
+    ];
+  }
+
+  Widget _buildFilterSection(ThemeService themeService) {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: [
+          _buildFilterPill('来源', _sourceOptions, _selectedSource, (newValue) {
+            setState(() {
+              _selectedSource = newValue;
+            });
+          }),
+          _buildFilterPill('标题', _titleOptions, _selectedTitle, (newValue) {
+            setState(() {
+              _selectedTitle = newValue;
+            });
+          }),
+          _buildFilterPill('年份', _yearOptions, _selectedYear, (newValue) {
+            setState(() {
+              _selectedYear = newValue;
+            });
+          }),
+          _buildYearSortButton(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFilterPill(String title, List<SelectorOption> options,
+      String selectedValue, ValueChanged<String> onSelected) {
+    bool isDefault = selectedValue == 'all';
+
+    return GestureDetector(
+      onTap: () {
+        _showFilterOptions(context, title, options, selectedValue, onSelected);
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+        decoration: BoxDecoration(
+          color: Colors.transparent,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Row(
+          children: [
+            Text(
+              title, // 始终显示原始标题，不显示选中内容
+              style: GoogleFonts.poppins(
+                fontSize: 13,
+                color: isDefault
+                    ? Theme.of(context).textTheme.bodySmall?.color
+                    : const Color(0xFF27AE60),
+                fontWeight: isDefault ? FontWeight.normal : FontWeight.w500,
+              ),
+            ),
+            const SizedBox(width: 4),
+            Icon(
+              Icons.arrow_drop_down,
+              size: 18,
+              color: isDefault
+                  ? Theme.of(context).textTheme.bodySmall?.color
+                  : const Color(0xFF27AE60),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showFilterOptions(
+      BuildContext context,
+      String title,
+      List<SelectorOption> options,
+      String selectedValue,
+      ValueChanged<String> onSelected) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) {
+        final screenWidth = MediaQuery.of(context).size.width;
+        const horizontalPadding = 16.0;
+        const spacing = 10.0;
+        final itemWidth = (screenWidth - horizontalPadding * 2 - spacing * 2) / 3;
+
+        return Container(
+          width: double.infinity, // 设置宽度为100%
+          decoration: BoxDecoration(
+            color: Theme.of(context).scaffoldBackgroundColor,
+            borderRadius: const BorderRadius.only(
+              topLeft: Radius.circular(20),
+              topRight: Radius.circular(20),
+            ),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start, // 左对齐
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Center(
+                  child: Text(
+                    title, 
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
+                ),
+              ),
+              Container(
+                constraints: BoxConstraints(
+                  maxHeight: MediaQuery.of(context).size.height * 0.6,
+                  minHeight: 200.0,
+                ),
+                child: SingleChildScrollView(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: horizontalPadding,
+                        vertical: 8
+                    ),
+                    child: Wrap(
+                      alignment: WrapAlignment.start, // 左对齐
+                      spacing: spacing,
+                      runSpacing: spacing,
+                      children: options.map((option) {
+                        final isSelected = option.value == selectedValue;
+                        return SizedBox(
+                          width: itemWidth,
+                          child: InkWell(
+                            onTap: () {
+                              onSelected(option.value);
+                              Navigator.pop(context);
+                            },
+                            borderRadius: BorderRadius.circular(8),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 8),
+                              alignment: Alignment.centerLeft, // 内容左对齐
+                              decoration: BoxDecoration(
+                                color: isSelected
+                                    ? const Color(0xFF27AE60)
+                                    : Theme.of(context).chipTheme.backgroundColor,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                option.label,
+                                textAlign: TextAlign.left, // 文字左对齐
+                                style: TextStyle(
+                                  color: isSelected ? Colors.white : null,
+                                ),
+                              ),
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildYearSortButton() {
+    IconData icon;
+    String text;
+    switch (_yearSortOrder) {
+      case SortOrder.desc:
+        icon = LucideIcons.arrowDown10;
+        text = '年份';
+        break;
+      case SortOrder.asc:
+        icon = LucideIcons.arrowUp10;
+        text = '年份';
+        break;
+      case SortOrder.none:
+        icon = LucideIcons.arrowDownUp;
+        text = '年份';
+        break;
+    }
+
+    bool isDefault = _yearSortOrder == SortOrder.none;
+
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          if (_yearSortOrder == SortOrder.none) {
+            _yearSortOrder = SortOrder.desc;
+          } else if (_yearSortOrder == SortOrder.desc) {
+            _yearSortOrder = SortOrder.asc;
+          } else {
+            _yearSortOrder = SortOrder.none;
+          }
+        });
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+        decoration: BoxDecoration(
+          color: Colors.transparent,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Row(
+          children: [
+            Text(
+              text,
+              style: GoogleFonts.poppins(
+                fontSize: 13,
+                color: isDefault
+                    ? Theme.of(context).textTheme.bodySmall?.color
+                    : const Color(0xFF27AE60),
+                fontWeight: isDefault ? FontWeight.normal : FontWeight.w500,
+              ),
+            ),
+            const SizedBox(width: 4),
+            Icon(
+              icon,
+              size: 16,
+              color: isDefault
+                  ? Theme.of(context).textTheme.bodySmall?.color
+                  : const Color(0xFF27AE60),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 /// 搜索结果网格组件
@@ -1139,20 +1478,21 @@ class _SearchResultsGrid extends StatefulWidget {
   State<_SearchResultsGrid> createState() => _SearchResultsGridState();
 }
 
-class _SearchResultsGridState extends State<_SearchResultsGrid> with AutomaticKeepAliveClientMixin {
+class _SearchResultsGridState extends State<_SearchResultsGrid>
+    with AutomaticKeepAliveClientMixin {
   final PageCacheService _cacheService = PageCacheService();
-  
+
   @override
   bool get wantKeepAlive => true;
 
   @override
   Widget build(BuildContext context) {
     super.build(context); // 必须调用以支持 AutomaticKeepAliveClientMixin
-    
+
     if (widget.results.isEmpty && widget.hasReceivedStart) {
       return _buildEmptyState();
     }
-    
+
     if (widget.results.isEmpty && !widget.hasReceivedStart) {
       return const SizedBox.shrink(); // 搜索开始但未收到start消息时，不显示任何内容
     }
@@ -1163,13 +1503,14 @@ class _SearchResultsGridState extends State<_SearchResultsGrid> with AutomaticKe
         final double screenWidth = constraints.maxWidth;
         final double padding = 16.0; // 左右padding
         final double spacing = 12.0; // 列间距
-        final double availableWidth = screenWidth - (padding * 2) - (spacing * 2); // 减去padding和间距
+        final double availableWidth =
+            screenWidth - (padding * 2) - (spacing * 2); // 减去padding和间距
         // 确保最小宽度，防止负宽度约束
         final double minItemWidth = 80.0; // 最小项目宽度
         final double calculatedItemWidth = availableWidth / 3;
         final double itemWidth = math.max(calculatedItemWidth, minItemWidth);
         final double itemHeight = itemWidth * 2.0; // 增加高度比例，确保有足够空间避免溢出
-        
+
         return GridView.builder(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
           shrinkWrap: true,
@@ -1184,18 +1525,24 @@ class _SearchResultsGridState extends State<_SearchResultsGrid> with AutomaticKe
           itemBuilder: (context, index) {
             final result = widget.results[index];
             final videoInfo = result.toVideoInfo();
-            
+
             return AnimatedContainer(
               duration: const Duration(milliseconds: 300),
               curve: Curves.easeOut,
               child: VideoCard(
-                key: ValueKey('${result.id}_${result.source}'), // 为每个卡片添加唯一key
+                key: ValueKey(
+                    '${result.id}_${result.source}'), // 为每个卡片添加唯一key
                 videoInfo: videoInfo,
-                onTap: widget.onVideoTap != null ? () => widget.onVideoTap!(videoInfo) : null,
+                onTap: widget.onVideoTap != null
+                    ? () => widget.onVideoTap!(videoInfo)
+                    : null,
                 from: 'search',
                 cardWidth: itemWidth, // 传递计算出的宽度
-                onGlobalMenuAction: widget.onGlobalMenuAction != null ? (action) => widget.onGlobalMenuAction!(videoInfo, action) : null,
-                isFavorited: _cacheService.isFavoritedSync(videoInfo.source, videoInfo.id), // 同步检查收藏状态
+                onGlobalMenuAction: widget.onGlobalMenuAction != null
+                    ? (action) => widget.onGlobalMenuAction!(videoInfo, action)
+                    : null,
+                isFavorited: _cacheService.isFavoritedSync(
+                    videoInfo.source, videoInfo.id), // 同步检查收藏状态
               ),
             );
           },
@@ -1209,10 +1556,10 @@ class _SearchResultsGridState extends State<_SearchResultsGrid> with AutomaticKe
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
+          const Icon(
             Icons.search_off,
             size: 80,
-            color: const Color(0xFFbdc3c7),
+            color: Color(0xFFbdc3c7),
           ),
           const SizedBox(height: 24),
           Text(
@@ -1225,7 +1572,7 @@ class _SearchResultsGridState extends State<_SearchResultsGrid> with AutomaticKe
           ),
           const SizedBox(height: 12),
           Text(
-            '请尝试其他关键词',
+            '请尝试其他关键词或调整筛选条件',
             style: GoogleFonts.poppins(
               fontSize: 14,
               color: const Color(0xFF95a5a6),
@@ -1236,3 +1583,4 @@ class _SearchResultsGridState extends State<_SearchResultsGrid> with AutomaticKe
     );
   }
 }
+

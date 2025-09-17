@@ -370,8 +370,6 @@ class DoubanService {
       if (dataSourceKey == 'cors_proxy') {
         headers['Origin'] = _getUniqueOrigin();
       }
-
-      print('apiUrl: $apiUrl');
       
       final response = await http.get(
         Uri.parse(apiUrl),
@@ -584,8 +582,6 @@ class DoubanService {
     if (dataSourceKey == 'cors_proxy') {
       target = 'https://ciao-cors.is-an.org/${Uri.encodeComponent(target)}';
     }
-
-    print('target: $target');
 
     try {
       final headers = {
