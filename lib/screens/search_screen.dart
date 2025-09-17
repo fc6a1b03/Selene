@@ -940,46 +940,55 @@ class _SearchScreenState extends State<SearchScreen>
                         ),
                       ),
                   ],
-                ],
-              ),
-              // 聚合开关行
-              if (_hasSearched && _searchResults.isNotEmpty) ...[
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Expanded(child: _buildFilterSection(themeService)),
-                    Text(
-                      '聚合',
-                      style: GoogleFonts.poppins(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                        color: themeService.isDarkMode
-                            ? const Color(0xFFffffff)
-                            : const Color(0xFF2c3e50),
-                      ),
-                    ),
-                    Transform.scale(
-                      scale: 0.7, // 进一步缩小开关尺寸
-                      child: Switch(
-                        value: _useAggregatedView,
-                        onChanged: (value) {
-                          setState(() {
-                            _useAggregatedView = value;
-                          });
-                        },
-                        activeColor: Colors.white,
-                        activeTrackColor: const Color(0xFF27ae60), // 改为绿色
-                        inactiveThumbColor: Colors.white,
-                        inactiveTrackColor: themeService.isDarkMode
-                            ? const Color(0xFF404040)
-                            : const Color(0xFFE0E0E0),
-                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        trackOutlineColor:
-                            WidgetStateProperty.all(Colors.transparent), // 去掉边框
+                  // 聚合开关移动到标题行最右侧
+                  if (_hasSearched && _searchResults.isNotEmpty) ...[
+                    const Spacer(),
+                    Transform.translate(
+                      offset: const Offset(0, 8), // 向下调整8像素与标题对齐
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Text(
+                            '聚合',
+                            style: GoogleFonts.poppins(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                              color: themeService.isDarkMode
+                                  ? const Color(0xFFffffff)
+                                  : const Color(0xFF2c3e50),
+                            ),
+                          ),
+                          Transform.scale(
+                            scale: 0.7, // 进一步缩小开关尺寸
+                            child: Switch(
+                              value: _useAggregatedView,
+                              onChanged: (value) {
+                                setState(() {
+                                  _useAggregatedView = value;
+                                });
+                              },
+                              activeThumbColor: Colors.white,
+                              activeTrackColor: const Color(0xFF27ae60), // 改为绿色
+                              inactiveThumbColor: Colors.white,
+                              inactiveTrackColor: themeService.isDarkMode
+                                  ? const Color(0xFF404040)
+                                  : const Color(0xFFE0E0E0),
+                              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              trackOutlineColor:
+                                  WidgetStateProperty.all(Colors.transparent), // 去掉边框
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ],
-                ),
+                ],
+              ),
+              // 筛选器行
+              if (_hasSearched && _searchResults.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                _buildFilterSection(themeService),
               ],
             ],
           ),

@@ -10,6 +10,7 @@ import '../services/theme_service.dart';
 import '../services/douban_service.dart';
 import '../services/bangumi_service.dart';
 import '../utils/image_url.dart';
+import 'fullscreen_image_viewer.dart';
 
 /// 自定义滚动物理，在展开状态下的顶部向下拖拽时触发收起
 class CollapsibleScrollPhysics extends ClampingScrollPhysics {
@@ -531,52 +532,62 @@ class _VideoMenuBottomSheetState extends State<VideoMenuBottomSheet>
                                     child: Row(
                                       children: [
                                         // 缩略图
-                                        Container(
-                                        width: 60,
-                                        height: 80,
-                                        decoration: BoxDecoration(
-                                          borderRadius: BorderRadius.circular(8),
-                                          boxShadow: [
-                                            BoxShadow(
-                                              color: Colors.black.withValues(alpha: 0.1),
-                                              blurRadius: 4,
-                                              offset: const Offset(0, 2),
+                                        GestureDetector(
+                                          onTap: () {
+                                            FullscreenImageViewer.show(
+                                              context,
+                                              imageUrl: thumbUrl,
+                                              source: widget.videoInfo.source,
+                                              title: widget.videoInfo.title,
+                                            );
+                                          },
+                                          child: Container(
+                                            width: 60,
+                                            height: 80,
+                                            decoration: BoxDecoration(
+                                              borderRadius: BorderRadius.circular(8),
+                                              boxShadow: [
+                                                BoxShadow(
+                                                  color: Colors.black.withValues(alpha: 0.1),
+                                                  blurRadius: 4,
+                                                  offset: const Offset(0, 2),
+                                                ),
+                                              ],
                                             ),
-                                          ],
-                                        ),
-                                        child: ClipRRect(
-                                          borderRadius: BorderRadius.circular(8),
-                                          child: CachedNetworkImage(
-                                            imageUrl: thumbUrl,
-                                            httpHeaders: headers,
-                                            fit: BoxFit.cover,
-                                            placeholder: (context, url) => Container(
-                                              color: themeService.isDarkMode 
-                                                  ? const Color(0xFF333333)
-                                                  : Colors.grey[300],
-                                              child: Icon(
-                                                Icons.movie,
-                                                color: themeService.isDarkMode 
-                                                    ? const Color(0xFF666666)
-                                                    : Colors.grey,
-                                                size: 24,
-                                              ),
-                                            ),
-                                            errorWidget: (context, url, error) => Container(
-                                              color: themeService.isDarkMode 
-                                                  ? const Color(0xFF333333)
-                                                  : Colors.grey[300],
-                                              child: Icon(
-                                                Icons.movie,
-                                                color: themeService.isDarkMode 
-                                                    ? const Color(0xFF666666)
-                                                    : Colors.grey,
-                                                size: 24,
+                                            child: ClipRRect(
+                                              borderRadius: BorderRadius.circular(8),
+                                              child: CachedNetworkImage(
+                                                imageUrl: thumbUrl,
+                                                httpHeaders: headers,
+                                                fit: BoxFit.cover,
+                                                placeholder: (context, url) => Container(
+                                                  color: themeService.isDarkMode 
+                                                      ? const Color(0xFF333333)
+                                                      : Colors.grey[300],
+                                                  child: Icon(
+                                                    Icons.movie,
+                                                    color: themeService.isDarkMode 
+                                                        ? const Color(0xFF666666)
+                                                        : Colors.grey,
+                                                    size: 24,
+                                                  ),
+                                                ),
+                                                errorWidget: (context, url, error) => Container(
+                                                  color: themeService.isDarkMode 
+                                                      ? const Color(0xFF333333)
+                                                      : Colors.grey[300],
+                                                  child: Icon(
+                                                    Icons.movie,
+                                                    color: themeService.isDarkMode 
+                                                        ? const Color(0xFF666666)
+                                                        : Colors.grey,
+                                                    size: 24,
+                                                  ),
+                                                ),
                                               ),
                                             ),
                                           ),
                                         ),
-                                      ),
                                       
                                       const SizedBox(width: 12),
                                       
