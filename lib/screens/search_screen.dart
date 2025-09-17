@@ -556,7 +556,7 @@ class _SearchScreenState extends State<SearchScreen>
                       const SizedBox(height: 20),
                       // 搜索框
                       _buildSearchBox(themeService),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 8),
 
                       if (!_hasSearched) ...[
                         // 搜索进度和结果
@@ -673,7 +673,7 @@ class _SearchScreenState extends State<SearchScreen>
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0),
+          padding: const EdgeInsets.only(left: 20.0, right: 16.0),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.end,
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -896,7 +896,7 @@ class _SearchScreenState extends State<SearchScreen>
       children: [
         // 标题行 - 有padding
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0),
+          padding: const EdgeInsets.only(left: 20.0, right: 16.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -943,23 +943,28 @@ class _SearchScreenState extends State<SearchScreen>
                   // 聚合开关移动到标题行最右侧
                   if (_hasSearched && _searchResults.isNotEmpty) ...[
                     const Spacer(),
-                    Transform.translate(
-                      offset: const Offset(0, 8), // 向下调整8像素与标题对齐
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          Text(
-                            '聚合',
-                            style: GoogleFonts.poppins(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
-                              color: themeService.isDarkMode
-                                  ? const Color(0xFFffffff)
-                                  : const Color(0xFF2c3e50),
-                            ),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Text(
+                          '聚合',
+                          style: GoogleFonts.poppins(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                            color: themeService.isDarkMode
+                                ? const Color(0xFFffffff)
+                                : const Color(0xFF2c3e50),
                           ),
-                          Transform.scale(
+                        ),
+                        const SizedBox(width: 4),
+                        Container(
+                          height: 20, // 限制高度
+                          constraints: const BoxConstraints(
+                            minHeight: 20,
+                            maxHeight: 20,
+                          ),
+                          child: Transform.scale(
                             scale: 0.7, // 进一步缩小开关尺寸
                             child: Switch(
                               value: _useAggregatedView,
@@ -979,8 +984,8 @@ class _SearchScreenState extends State<SearchScreen>
                                   WidgetStateProperty.all(Colors.transparent), // 去掉边框
                             ),
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
                   ],
                 ],
@@ -993,7 +998,7 @@ class _SearchScreenState extends State<SearchScreen>
             ],
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 8),
         // Grid区域 - 无padding，占满宽度
         _useAggregatedView
             ? SearchResultAggGrid(

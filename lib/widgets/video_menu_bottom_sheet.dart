@@ -1642,50 +1642,116 @@ class _VideoMenuBottomSheetState extends State<VideoMenuBottomSheet>
                 Flexible(
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: GridView.builder(
-                      shrinkWrap: true,
+                    child: SingleChildScrollView(
                       physics: const BouncingScrollPhysics(),
-                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 3,
-                        childAspectRatio: 2.2,
-                        crossAxisSpacing: 8,
-                        mainAxisSpacing: 8,
+                      child: Column(
+                        children: [
+                          // 将播放源按两列分组
+                          ...List.generate(
+                            (sourceNames.length / 2).ceil(),
+                            (rowIndex) {
+                              final startIndex = rowIndex * 2;
+                              final endIndex = (startIndex + 2).clamp(0, sourceNames.length);
+                              final rowSources = sourceNames.sublist(startIndex, endIndex);
+                              
+                              return Padding(
+                                padding: const EdgeInsets.only(bottom: 8),
+                                child: Row(
+                                  children: [
+                                    // 第一列
+                                    Expanded(
+                                      child: Container(
+                                        margin: const EdgeInsets.only(right: 4),
+                                        decoration: BoxDecoration(
+                                          color: themeService.isDarkMode 
+                                              ? const Color(0xFF3A3A3A)
+                                              : const Color(0xFFF5F5F5),
+                                          borderRadius: BorderRadius.circular(8),
+                                        ),
+                                        child: Material(
+                                          color: Colors.transparent,
+                                          child: InkWell(
+                                            onTap: () {
+                                              Navigator.of(context).pop();
+                                              // 这里可以添加选择特定播放源的逻辑
+                                            },
+                                            borderRadius: BorderRadius.circular(8),
+                                            child: Container(
+                                              padding: const EdgeInsets.symmetric(
+                                                horizontal: 12,
+                                                vertical: 14,
+                                              ),
+                                              child: Center(
+                                                child: Text(
+                                                  rowSources[0],
+                                                  style: GoogleFonts.poppins(
+                                                    fontSize: 14,
+                                                    fontWeight: FontWeight.w500,
+                                                    height: 1.2,
+                                                  ),
+                                                  textAlign: TextAlign.center,
+                                                  maxLines: 2,
+                                                  overflow: TextOverflow.ellipsis,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    
+                                    // 第二列（如果存在）
+                                    if (rowSources.length > 1)
+                                      Expanded(
+                                        child: Container(
+                                          margin: const EdgeInsets.only(left: 4),
+                                          decoration: BoxDecoration(
+                                            color: themeService.isDarkMode 
+                                                ? const Color(0xFF3A3A3A)
+                                                : const Color(0xFFF5F5F5),
+                                            borderRadius: BorderRadius.circular(8),
+                                          ),
+                                          child: Material(
+                                            color: Colors.transparent,
+                                            child: InkWell(
+                                              onTap: () {
+                                                Navigator.of(context).pop();
+                                                // 这里可以添加选择特定播放源的逻辑
+                                              },
+                                              borderRadius: BorderRadius.circular(8),
+                                              child: Container(
+                                                padding: const EdgeInsets.symmetric(
+                                                  horizontal: 12,
+                                                  vertical: 14,
+                                                ),
+                                                child: Center(
+                                                  child: Text(
+                                                    rowSources[1],
+                                                    style: GoogleFonts.poppins(
+                                                      fontSize: 14,
+                                                      fontWeight: FontWeight.w500,
+                                                      height: 1.2,
+                                                    ),
+                                                    textAlign: TextAlign.center,
+                                                    maxLines: 2,
+                                                    overflow: TextOverflow.ellipsis,
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      )
+                                    else
+                                      // 如果只有一列，添加空白占位
+                                      const Expanded(child: SizedBox()),
+                                  ],
+                                ),
+                              );
+                            },
+                          ),
+                        ],
                       ),
-                      itemCount: sourceNames.length,
-                      itemBuilder: (context, index) {
-                        final sourceName = sourceNames[index];
-                        return TextButton(
-                          onPressed: () {
-                            Navigator.of(context).pop();
-                            // 这里可以添加选择特定播放源的逻辑
-                          },
-                          style: TextButton.styleFrom(
-                            backgroundColor: themeService.isDarkMode 
-                                ? const Color(0xFF3A3A3A)
-                                : const Color(0xFFF5F5F5),
-                            foregroundColor: themeService.isDarkMode 
-                                ? Colors.white
-                                : Colors.black87,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 12,
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                          ),
-                          child: Text(
-                            sourceName,
-                            style: GoogleFonts.poppins(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
-                            ),
-                            textAlign: TextAlign.center,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        );
-                      },
                     ),
                   ),
                 ),
