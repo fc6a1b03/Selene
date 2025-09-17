@@ -126,14 +126,14 @@ class _SearchResultAggGridState extends State<SearchResultAggGrid>
         final double itemHeight = itemWidth * 2.0; // 增加高度比例，确保有足够空间避免溢出
         
         return GridView.builder(
-          padding: const EdgeInsets.only(top: 16, bottom: 16),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: 3, // 严格3列布局
             childAspectRatio: itemWidth / itemHeight, // 精确计算宽高比
             crossAxisSpacing: spacing, // 列间距
-            mainAxisSpacing: 8, // 行间距 - 减少到8
+            mainAxisSpacing: 16, // 行间距 - 与收藏grid保持一致
           ),
           itemCount: _orderedKeys.length,
           itemBuilder: (context, index) {

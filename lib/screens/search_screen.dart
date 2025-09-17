@@ -810,10 +810,7 @@ class _SearchScreenState extends State<SearchScreen> with TickerProviderStateMix
   Widget _buildSearchResults(ThemeService themeService) {
     // 如果已搜索过，总是显示搜索结果区域
     if (_hasSearched) {
-      return Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16.0),
-        child: _buildSearchResultsList(themeService),
-      );
+      return _buildSearchResultsList(themeService);
     }
     
     // 默认返回空容器
@@ -824,86 +821,96 @@ class _SearchScreenState extends State<SearchScreen> with TickerProviderStateMix
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            Text(
-              '搜索结果',
-              style: GoogleFonts.poppins(
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-                color: themeService.isDarkMode 
-                    ? const Color(0xFFffffff)
-                    : const Color(0xFF2c3e50),
-              ),
-            ),
-            if (_hasSearched) ...[
-              const SizedBox(width: 8),
-              if (_hasReceivedStart)
-                Text(
-                  _getProgressText(),
-                  style: GoogleFonts.poppins(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w400,
-                    color: themeService.isDarkMode 
-                        ? const Color(0xFFb0b0b0)
-                        : const Color(0xFF7f8c8d),
-                  ),
-                )
-              else
-                Transform.translate(
-                  offset: const Offset(2, -2), // 向上调整2像素
-                  child: const SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF27ae60)),
+        // 标题行 - 有padding
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    '搜索结果',
+                    style: GoogleFonts.poppins(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: themeService.isDarkMode 
+                          ? const Color(0xFFffffff)
+                          : const Color(0xFF2c3e50),
                     ),
                   ),
-                ),
-            ],
-          ],
-        ),
-        // 聚合开关行
-        if (_hasSearched && _searchResults.isNotEmpty) ...[
-          Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              Text(
-                '聚合',
-                style: GoogleFonts.poppins(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                  color: themeService.isDarkMode 
-                      ? const Color(0xFFffffff)
-                      : const Color(0xFF2c3e50),
-                ),
+                  if (_hasSearched) ...[
+                    const SizedBox(width: 8),
+                    if (_hasReceivedStart)
+                      Text(
+                        _getProgressText(),
+                        style: GoogleFonts.poppins(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w400,
+                          color: themeService.isDarkMode 
+                              ? const Color(0xFFb0b0b0)
+                              : const Color(0xFF7f8c8d),
+                        ),
+                      )
+                    else
+                      Transform.translate(
+                        offset: const Offset(2, -2), // 向上调整2像素
+                        child: const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF27ae60)),
+                          ),
+                        ),
+                      ),
+                  ],
+                ],
               ),
-              Transform.scale(
-                scale: 0.7, // 进一步缩小开关尺寸
-                child: Switch(
-                  value: _useAggregatedView,
-                  onChanged: (value) {
-                    setState(() {
-                      _useAggregatedView = value;
-                    });
-                  },
-                  activeColor: Colors.white,
-                  activeTrackColor: const Color(0xFF27ae60), // 改为绿色
-                  inactiveThumbColor: Colors.white,
-                  inactiveTrackColor: themeService.isDarkMode 
-                      ? const Color(0xFF404040)
-                      : const Color(0xFFE0E0E0),
-                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  trackOutlineColor: WidgetStateProperty.all(Colors.transparent), // 去掉边框
+              // 聚合开关行
+              if (_hasSearched && _searchResults.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    Text(
+                      '聚合',
+                      style: GoogleFonts.poppins(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                        color: themeService.isDarkMode 
+                            ? const Color(0xFFffffff)
+                            : const Color(0xFF2c3e50),
+                      ),
+                    ),
+                    Transform.scale(
+                      scale: 0.7, // 进一步缩小开关尺寸
+                      child: Switch(
+                        value: _useAggregatedView,
+                        onChanged: (value) {
+                          setState(() {
+                            _useAggregatedView = value;
+                          });
+                        },
+                        activeColor: Colors.white,
+                        activeTrackColor: const Color(0xFF27ae60), // 改为绿色
+                        inactiveThumbColor: Colors.white,
+                        inactiveTrackColor: themeService.isDarkMode 
+                            ? const Color(0xFF404040)
+                            : const Color(0xFFE0E0E0),
+                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        trackOutlineColor: WidgetStateProperty.all(Colors.transparent), // 去掉边框
+                      ),
+                    ),
+                  ],
                 ),
-              ),
+              ],
             ],
           ),
-        ],
+        ),
         const SizedBox(height: 16),
-        // 根据切换状态显示不同的网格组件
+        // Grid区域 - 无padding，占满宽度
         _useAggregatedView 
             ? SearchResultAggGrid(
                 key: ValueKey('agg_${_searchResults.length}'), // 添加key以优化重渲染
@@ -1164,14 +1171,14 @@ class _SearchResultsGridState extends State<_SearchResultsGrid> with AutomaticKe
         final double itemHeight = itemWidth * 2.0; // 增加高度比例，确保有足够空间避免溢出
         
         return GridView.builder(
-          padding: const EdgeInsets.only(top: 16, bottom: 16),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: 3, // 严格3列布局
             childAspectRatio: itemWidth / itemHeight, // 精确计算宽高比
             crossAxisSpacing: spacing, // 列间距
-            mainAxisSpacing: 8, // 行间距 - 减少到8
+            mainAxisSpacing: 16, // 行间距 - 与收藏grid保持一致
           ),
           itemCount: widget.results.length,
           itemBuilder: (context, index) {
