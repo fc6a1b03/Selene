@@ -12,7 +12,7 @@ import '../utils/image_url.dart';
 class VideoCard extends StatelessWidget {
   final VideoInfo videoInfo;
   final VoidCallback? onTap;
-  final String from; // 场景值：'favorite', 'playrecord', 'search'
+  final String from; // 场景值：'favorite', 'playrecord', 'search', 'agg'
   final double? cardWidth; // 卡片宽度，用于响应式布局
   final Function(VideoMenuAction)? onGlobalMenuAction; // 视频菜单操作回调
   final bool isFavorited; // 是否已收藏
@@ -48,7 +48,7 @@ class VideoCard extends StatelessWidget {
         
         return GestureDetector(
           onTap: onTap,
-          onLongPress: (from == 'playrecord' || from == 'douban' || from == 'bangumi' || from == 'favorite' || from == 'search') ? () {
+          onLongPress: (from == 'playrecord' || from == 'douban' || from == 'bangumi' || from == 'favorite' || from == 'search' || from == 'agg') ? () {
             // 触发震动反馈
             try {
               HapticFeedback.mediumImpact();
@@ -59,7 +59,7 @@ class VideoCard extends StatelessWidget {
             _showGlobalMenu(context);
           } : null,
           // 优化长按响应
-          onLongPressStart: (from == 'playrecord' || from == 'douban' || from == 'bangumi' || from == 'favorite' || from == 'search') ? (_) {
+          onLongPressStart: (from == 'playrecord' || from == 'douban' || from == 'bangumi' || from == 'favorite' || from == 'search' || from == 'agg') ? (_) {
             // 长按开始时的视觉反馈
           } : null,
           // 设置手势行为，确保长按优先级
@@ -128,8 +128,8 @@ class VideoCard extends StatelessWidget {
                       ),
                     ),
                 ),
-                // 年份徽章（搜索模式）
-                if (from == 'search' && videoInfo.year.isNotEmpty)
+                // 年份徽章（搜索模式和聚合模式）
+                if ((from == 'search' || from == 'agg') && videoInfo.year.isNotEmpty)
                   Positioned(
                     top: 4,
                     left: 4,
@@ -246,7 +246,7 @@ class VideoCard extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                   // 豆瓣模式和Bangumi模式不显示来源信息
-                  if (from != 'douban' && from != 'bangumi') ...[
+                  if (from != 'douban' && from != 'bangumi' && from != 'agg') ...[
                     const SizedBox(height: 3), // 增加title和sourceName之间的间距
                     // 视频源名称
                     Container(
@@ -262,10 +262,14 @@ class VideoCard extends StatelessWidget {
                         borderRadius: BorderRadius.circular(3),
                       ),
                       child: Text(
-                        videoInfo.sourceName,
+                        from == 'agg' 
+                            ? _getAggregatedSourceText(videoInfo.sourceName)
+                            : videoInfo.sourceName,
                         style: GoogleFonts.poppins(
                           fontSize: width < 100 ? 11 : 12, // 根据宽度调整字体大小，调大字体
-                          color: const Color(0xFF7f8c8d),
+                          color: from == 'agg' 
+                              ? const Color(0xFF9b59b6) // 聚合模式用紫色文字
+                              : const Color(0xFF7f8c8d), // 其他模式用灰色文字
                           height: 1.0, // 进一步减少行高
                         ),
                         textAlign: TextAlign.center,
@@ -306,6 +310,8 @@ class VideoCard extends StatelessWidget {
         return true; // 播放记录中显示当前/总集数
       case 'search':
         return true; // 搜索模式中显示总集数
+      case 'agg':
+        return true; // 聚合模式中显示总集数
       default:
         return true; // 默认显示当前/总集数
     }
@@ -323,6 +329,8 @@ class VideoCard extends StatelessWidget {
         return '${videoInfo.index}/${videoInfo.totalEpisodes}'; // 播放记录显示当前/总集数
       case 'search':
         return '${videoInfo.totalEpisodes}'; // 搜索模式只显示总集数
+      case 'agg':
+        return '${videoInfo.totalEpisodes}'; // 聚合模式只显示总集数
       default:
         return '${videoInfo.index}/${videoInfo.totalEpisodes}'; // 默认显示当前/总集数
     }
@@ -339,6 +347,8 @@ class VideoCard extends StatelessWidget {
         return false; // Bangumi模式不显示进度条
       case 'search':
         return false; // 搜索模式不显示进度条
+      case 'agg':
+        return false; // 聚合模式不显示进度条
       case 'playrecord':
       default:
         return true; // 播放记录中显示进度条
@@ -361,6 +371,16 @@ class VideoCard extends StatelessWidget {
     } catch (e) {
       // 如果评分不是数字格式，则不显示
       return false;
+    }
+  }
+
+  /// 获取聚合源文本显示
+  String _getAggregatedSourceText(String sourceNames) {
+    final sources = sourceNames.split(', ');
+    if (sources.length <= 2) {
+      return sourceNames;
+    } else {
+      return '${sources.take(2).join(', ')}等${sources.length}源';
     }
   }
 

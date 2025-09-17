@@ -12,6 +12,7 @@ import '../models/video_info.dart';
 import '../widgets/video_card.dart';
 import '../widgets/video_menu_bottom_sheet.dart';
 import '../widgets/favorites_grid.dart';
+import '../widgets/search_result_agg_grid.dart';
 
 class SearchScreen extends StatefulWidget {
   final Function(VideoInfo)? onVideoTap;
@@ -36,6 +37,7 @@ class _SearchScreenState extends State<SearchScreen> with TickerProviderStateMix
   String? _searchError;
   SearchProgress? _searchProgress;
   Timer? _updateTimer; // 用于防抖的定时器
+  bool _useAggregatedView = true; // 是否使用聚合视图，默认开启
   
   // 长按删除相关状态
   String? _deletingHistoryItem;
@@ -851,27 +853,74 @@ class _SearchScreenState extends State<SearchScreen> with TickerProviderStateMix
               else
                 Transform.translate(
                   offset: const Offset(2, -2), // 向上调整2像素
-                  child: SizedBox(
+                  child: const SizedBox(
                     width: 16,
                     height: 16,
                     child: CircularProgressIndicator(
                       strokeWidth: 2,
-                      valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF27ae60)),
+                      valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF27ae60)),
                     ),
                   ),
                 ),
             ],
           ],
         ),
+        // 聚合开关行
+        if (_hasSearched && _searchResults.isNotEmpty) ...[
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              Text(
+                '聚合',
+                style: GoogleFonts.poppins(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: themeService.isDarkMode 
+                      ? const Color(0xFFffffff)
+                      : const Color(0xFF2c3e50),
+                ),
+              ),
+              Transform.scale(
+                scale: 0.7, // 进一步缩小开关尺寸
+                child: Switch(
+                  value: _useAggregatedView,
+                  onChanged: (value) {
+                    setState(() {
+                      _useAggregatedView = value;
+                    });
+                  },
+                  activeColor: Colors.white,
+                  activeTrackColor: const Color(0xFF27ae60), // 改为绿色
+                  inactiveThumbColor: Colors.white,
+                  inactiveTrackColor: themeService.isDarkMode 
+                      ? const Color(0xFF404040)
+                      : const Color(0xFFE0E0E0),
+                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  trackOutlineColor: WidgetStateProperty.all(Colors.transparent), // 去掉边框
+                ),
+              ),
+            ],
+          ),
+        ],
         const SizedBox(height: 16),
-        _SearchResultsGrid(
-          key: ValueKey(_searchResults.length), // 添加key以优化重渲染
-          results: _searchResults,
-          themeService: themeService,
-          onVideoTap: widget.onVideoTap,
-          onGlobalMenuAction: _onGlobalMenuAction,
-          hasReceivedStart: _hasReceivedStart,
-        ),
+        // 根据切换状态显示不同的网格组件
+        _useAggregatedView 
+            ? SearchResultAggGrid(
+                key: ValueKey('agg_${_searchResults.length}'), // 添加key以优化重渲染
+                results: _searchResults,
+                themeService: themeService,
+                onVideoTap: widget.onVideoTap,
+                onGlobalMenuAction: _onGlobalMenuAction,
+                hasReceivedStart: _hasReceivedStart,
+              )
+            : _SearchResultsGrid(
+                key: ValueKey('list_${_searchResults.length}'), // 添加key以优化重渲染
+                results: _searchResults,
+                themeService: themeService,
+                onVideoTap: widget.onVideoTap,
+                onGlobalMenuAction: _onGlobalMenuAction,
+                hasReceivedStart: _hasReceivedStart,
+              ),
       ],
     );
   }
@@ -1122,7 +1171,7 @@ class _SearchResultsGridState extends State<_SearchResultsGrid> with AutomaticKe
             crossAxisCount: 3, // 严格3列布局
             childAspectRatio: itemWidth / itemHeight, // 精确计算宽高比
             crossAxisSpacing: spacing, // 列间距
-            mainAxisSpacing: 16, // 行间距
+            mainAxisSpacing: 8, // 行间距 - 减少到8
           ),
           itemCount: widget.results.length,
           itemBuilder: (context, index) {

@@ -354,9 +354,6 @@ class _VideoMenuBottomSheetState extends State<VideoMenuBottomSheet>
             
             return GestureDetector(
               behavior: HitTestBehavior.translucent,
-              onTap: () {
-                print('=== 外层GestureDetector onTap 触发 ===');
-              },
               onPanStart: (details) {
                 // 拖动开始时，确保当前高度存在
                 if ((_doubanDetails != null || _bangumiDetails != null) && _initialSheetHeight != null && _currentSheetHeight == null) {
@@ -604,43 +601,70 @@ class _VideoMenuBottomSheetState extends State<VideoMenuBottomSheet>
                                             
                                             const SizedBox(height: 6),
                                             
-                                            // 源名称标签
-                                            (widget.videoInfo.source == 'douban' || widget.videoInfo.source == 'bangumi')
-                                                ? // 豆瓣或Bangumi来源：纯文本，无边框
-                                                  Text(
-                                                    widget.videoInfo.source == 'douban' ? '来自豆瓣' : '来自 Bangumi',
-                                                    style: GoogleFonts.poppins(
-                                                      fontSize: 12,
-                                                      color: themeService.isDarkMode 
-                                                          ? const Color(0xFF999999)
-                                                          : const Color(0xFF666666),
-                                                    ),
-                                                  )
-                                                : // 其他来源：带边框的标签
-                                                  Container(
-                                                    padding: const EdgeInsets.symmetric(
-                                                      horizontal: 8,
-                                                      vertical: 4,
-                                                    ),
-                                                    decoration: BoxDecoration(
-                                                      border: Border.all(
-                                                        color: themeService.isDarkMode 
-                                                            ? const Color(0xFF666666)
-                                                            : const Color(0xFFE0E0E0),
-                                                        width: 1,
-                                                      ),
-                                                      borderRadius: BorderRadius.circular(4),
-                                                    ),
-                                                    child: Text(
-                                                      widget.videoInfo.sourceName,
-                                                      style: GoogleFonts.poppins(
-                                                        fontSize: 12,
-                                                        color: themeService.isDarkMode 
-                                                            ? const Color(0xFF999999)
-                                                            : const Color(0xFF666666),
-                                                      ),
-                                                    ),
-                                                  ),
+                            // 源名称标签或播放源数量
+                            (widget.videoInfo.source == 'douban' || widget.videoInfo.source == 'bangumi')
+                                ? // 豆瓣或Bangumi来源：纯文本，无边框
+                                  Text(
+                                    widget.videoInfo.source == 'douban' ? '来自豆瓣' : '来自 Bangumi',
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 12,
+                                      color: themeService.isDarkMode 
+                                          ? const Color(0xFF999999)
+                                          : const Color(0xFF666666),
+                                    ),
+                                  )
+                                : // 聚合来源：显示播放源数量并可点击
+                                  widget.from == 'agg'
+                                      ? GestureDetector(
+                                          onTap: () => _showSourcesDialog(context, themeService),
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Text(
+                                                '共 ${widget.videoInfo.sourceName.split(', ').length} 个播放源',
+                                                style: GoogleFonts.poppins(
+                                                  fontSize: 12,
+                                                  color: themeService.isDarkMode 
+                                                      ? const Color(0xFF999999)
+                                                      : const Color(0xFF666666),
+                                                ),
+                                              ),
+                                              const SizedBox(width: 4),
+                                              Icon(
+                                                Icons.chevron_right,
+                                                size: 16,
+                                                color: themeService.isDarkMode 
+                                                    ? const Color(0xFF999999)
+                                                    : const Color(0xFF666666),
+                                              ),
+                                            ],
+                                          ),
+                                        )
+                                      : // 其他来源：带边框的标签
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 8,
+                                            vertical: 4,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            border: Border.all(
+                                              color: themeService.isDarkMode 
+                                                  ? const Color(0xFF666666)
+                                                  : const Color(0xFFE0E0E0),
+                                              width: 1,
+                                            ),
+                                            borderRadius: BorderRadius.circular(4),
+                                          ),
+                                          child: Text(
+                                            widget.videoInfo.sourceName,
+                                            style: GoogleFonts.poppins(
+                                              fontSize: 12,
+                                              color: themeService.isDarkMode 
+                                                  ? const Color(0xFF999999)
+                                                  : const Color(0xFF666666),
+                                            ),
+                                          ),
+                                        ),
                                           ],
                                         ),
                                       ),
@@ -1268,6 +1292,46 @@ class _VideoMenuBottomSheetState extends State<VideoMenuBottomSheet>
       );
     }
     
+    // 如果是聚合场景，显示播放和豆瓣详情（如果有）
+    if (widget.from == 'agg') {
+      List<Widget> menuItems = [
+        // 播放按钮
+        _buildMenuItem(
+          context,
+          themeService,
+          icon: Icons.play_circle_fill,
+          iconColor: const Color(0xFF27AE60),
+          title: '播放',
+          subtitle: _getEpisodeSubtitle(),
+          onTap: () {
+            // 对于聚合卡片，关闭菜单后触发播放操作（会显示源选择对话框）
+            widget.onClose();
+            widget.onActionSelected(VideoMenuAction.play);
+          },
+        ),
+      ];
+      
+      // 如果有豆瓣ID且不为0，添加豆瓣详情选项
+      if (widget.videoInfo.doubanId != null && widget.videoInfo.doubanId!.isNotEmpty && widget.videoInfo.doubanId != "0") {
+        menuItems.addAll([
+          _buildDivider(themeService),
+          _buildMenuItem(
+            context,
+            themeService,
+            icon: Icons.link,
+            iconColor: const Color(0xFF3498DB),
+            title: '豆瓣详情',
+            onTap: () async {
+              widget.onClose();
+              await _openDoubanDetail(widget.videoInfo.doubanId!);
+            },
+          ),
+        ]);
+      }
+      
+      return Column(children: menuItems);
+    }
+    
     // 如果是搜索场景，显示播放、收藏/取消收藏，如果有豆瓣ID则显示豆瓣详情
     if (widget.from == 'search') {
       List<Widget> menuItems = [
@@ -1465,6 +1529,7 @@ class _VideoMenuBottomSheetState extends State<VideoMenuBottomSheet>
     );
   }
 
+
   
 
   /// 获取集数副标题
@@ -1513,6 +1578,115 @@ class _VideoMenuBottomSheetState extends State<VideoMenuBottomSheet>
     } catch (e) {
       // 不处理
     }
+  }
+
+  /// 显示播放源列表对话框
+  void _showSourcesDialog(BuildContext context, ThemeService themeService) {
+    final sourceNames = widget.videoInfo.sourceName.split(', ');
+    
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (BuildContext context) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          child: Container(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(context).size.height * 0.5,
+              maxWidth: 320,
+            ),
+            decoration: BoxDecoration(
+              color: themeService.isDarkMode 
+                  ? const Color(0xFF2C2C2C)
+                  : Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.1),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // 标题
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
+                  child: Text(
+                    '可用播放源',
+                    style: GoogleFonts.poppins(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: themeService.isDarkMode 
+                          ? const Color(0xFFFFFFFF)
+                          : const Color(0xFF2C2C2C),
+                    ),
+                  ),
+                ),
+                
+                // 播放源网格
+                Flexible(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: GridView.builder(
+                      shrinkWrap: true,
+                      physics: const BouncingScrollPhysics(),
+                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 3,
+                        childAspectRatio: 2.2,
+                        crossAxisSpacing: 8,
+                        mainAxisSpacing: 8,
+                      ),
+                      itemCount: sourceNames.length,
+                      itemBuilder: (context, index) {
+                        final sourceName = sourceNames[index];
+                        return TextButton(
+                          onPressed: () {
+                            Navigator.of(context).pop();
+                            // 这里可以添加选择特定播放源的逻辑
+                          },
+                          style: TextButton.styleFrom(
+                            backgroundColor: themeService.isDarkMode 
+                                ? const Color(0xFF3A3A3A)
+                                : const Color(0xFFF5F5F5),
+                            foregroundColor: themeService.isDarkMode 
+                                ? Colors.white
+                                : Colors.black87,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 12,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                          child: Text(
+                            sourceName,
+                            style: GoogleFonts.poppins(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                            ),
+                            textAlign: TextAlign.center,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+                
+                // 底部间距
+                const SizedBox(height: 20),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 
 }
