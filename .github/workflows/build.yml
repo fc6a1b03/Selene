@@ -13,8 +13,8 @@ jobs:
     - name: Setup Java
       uses: actions/setup-java@v4
       with:
+        java-version: '17'
         distribution: 'temurin'
-        java-version: '21'
     - name: Setup Flutter
       uses: subosito/flutter-action@v2
       with:  
@@ -32,11 +32,12 @@ jobs:
         echo "version_name=$VERSION_NAME" >> $GITHUB_OUTPUT  
         echo "build_number=$BUILD_NUMBER" >> $GITHUB_OUTPUT  
         echo "full_version=$VERSION" >> $GITHUB_OUTPUT  
-    - name: Build APK with version  
-      run: |  
-        flutter build apk --release \  
-          --build-name=${{ steps.version.outputs.version_name }} \  
-          --build-number=${{ steps.version.outputs.build_number }}  
+    - name: Build APK
+      run: |
+        flutter build apk --release \
+          --target=lib/main.dart \
+          --build-name=${{ steps.version.outputs.version_name }} \
+          --build-number=${{ steps.version.outputs.build_number }}
     - name: Upload APK
       uses: actions/upload-artifact@v4  
       with:
