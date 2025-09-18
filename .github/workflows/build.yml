@@ -14,16 +14,6 @@ jobs:
     steps:
     - uses: actions/checkout@v5
 
-    - uses: actions/cache@v4
-      with:
-        path: |
-          ~/.gradle/caches
-          ~/.gradle/wrapper
-          /home/runner/.pub-cache
-        key: ${{ runner.os }}-gradle-${{ hashFiles('**/gradle-wrapper.properties','pubspec.lock') }}
-        restore-keys: |
-          ${{ runner.os }}-gradle-
-
     - name: Setup Java
       uses: actions/setup-java@v4
       with:
@@ -50,22 +40,16 @@ jobs:
       run: yes | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --licenses || true
     - name: Build APK (multi-arch)
       run: |
-        ARCHS="android-arm android-arm64 android-x86 android-x64"
+        # Flutter 架构列表
+        ARCHS="armeabi-v7a arm64-v8a x86 x86_64"
         for arch in $ARCHS; do
-          case $arch in
-            android-arm)    suffix=armeabi-v7a ;;
-            android-arm64)  suffix=arm64-v8a   ;;
-            android-x86)    suffix=x86         ;;
-            android-x64)    suffix=x86_64      ;;
-          esac
           flutter build apk --release \
             --target-platform $arch \
             --target=lib/main.dart \
             --build-name=${{ steps.version.outputs.version_name }} \
             --build-number=${{ steps.version.outputs.build_number }}
-          # 重命名为 selene-v1.0.0+1-<suffix>.apk
           mv build/app/outputs/flutter-apk/app-release.apk \
-             build/app/outputs/flutter-apk/selene-v${{ steps.version.outputs.full_version }}-${suffix}.apk
+             build/app/outputs/flutter-apk/selene-v${{ steps.version.outputs.full_version }}-${arch}.apk
         done
           
     - name: Rename APK
@@ -76,7 +60,7 @@ jobs:
       run: |
         git config user.name "github-actions[bot]"
         git config user.email "github-actions[bot]@users.noreply.github.com"
-        # 检测远程是否已有该 tag；没有才创建并推送
+        # 检测远程是否已有该 tag
         if ! git ls-remote --tags origin "v${{ steps.version.outputs.full_version }}" | grep -q "v${{ steps.version.outputs.full_version }}"; then
           git tag "v${{ steps.version.outputs.full_version }}"
           git push origin "v${{ steps.version.outputs.full_version }}"
