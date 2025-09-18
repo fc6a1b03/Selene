@@ -41,17 +41,24 @@ jobs:
     - name: Build APK (multi-arch)
       run: |
         # Flutter 架构列表
-        ARCHS="armeabi-v7a arm64-v8a x86 x86_64"
+        ARCHS="arm arm64 x86 x86_64"
         for arch in $ARCHS; do
           flutter build apk --release \
             --target-platform $arch \
             --target=lib/main.dart \
-            --build-name=${{ steps.version.outputs.version_name }} \
-            --build-number=${{ steps.version.outputs.build_number }}
+            --build-name=1.0.0 \
+            --build-number=1
+          # 映射可读文件名
+          case $arch in
+            arm)     suffix=armeabi-v7a ;;
+            arm64)   suffix=arm64-v8a   ;;
+            x86)     suffix=x86         ;;
+            x86_64)  suffix=x86_64      ;;
+          esac
           mv build/app/outputs/flutter-apk/app-release.apk \
-             build/app/outputs/flutter-apk/selene-v${{ steps.version.outputs.full_version }}-${arch}.apk
+             build/app/outputs/flutter-apk/selene-v${{ steps.version.outputs.full_version }}-${suffix}.apk
         done
-          
+
     - name: Rename APK
       run: |
         mv build/app/outputs/flutter-apk/app-release.apk \
