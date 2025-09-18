@@ -50,7 +50,6 @@ jobs:
         VER=${{ steps.version.outputs.full_version }}
         mv $OUT/app-armeabi-v7a-release.apk  $OUT/selene-v${VER}-armeabi-v7a.apk
         mv $OUT/app-arm64-v8a-release.apk    $OUT/selene-v${VER}-arm64-v8a.apk
-        mv $OUT/app-x86-release.apk          $OUT/selene-v${VER}-x86.apk
         mv $OUT/app-x86_64-release.apk       $OUT/selene-v${VER}-x86_64.apk
     - name: Push tag
       run: |
@@ -74,12 +73,10 @@ jobs:
           |------|----------|
           | armeabi-v7a | selene-v${{ steps.version.outputs.full_version }}-armeabi-v7a.apk |
           | arm64-v8a   | selene-v${{ steps.version.outputs.full_version }}-arm64-v8a.apk   |
-          | x86         | selene-v${{ steps.version.outputs.full_version }}-x86.apk         |
           | x86_64      | selene-v${{ steps.version.outputs.full_version }}-x86_64.apk      |
         files: |
           build/app/outputs/flutter-apk/selene-v${{ steps.version.outputs.full_version }}-armeabi-v7a.apk
           build/app/outputs/flutter-apk/selene-v${{ steps.version.outputs.full_version }}-arm64-v8a.apk
-          build/app/outputs/flutter-apk/selene-v${{ steps.version.outputs.full_version }}-x86.apk
           build/app/outputs/flutter-apk/selene-v${{ steps.version.outputs.full_version }}-x86_64.apk
         draft: false
         prerelease: false
