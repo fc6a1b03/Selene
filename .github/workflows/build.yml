@@ -40,7 +40,7 @@ jobs:
       run: yes | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --licenses || true
     - name: Build APK (multi-arch)
       run: |
-        flutter build apk --release --split-per-abi \
+        flutter build apk --release --split-per-abi --verbose \
           --build-name=${{ steps.version.outputs.version_name }} \
           --build-number=${{ steps.version.outputs.build_number }}
 
