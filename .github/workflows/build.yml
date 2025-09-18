@@ -33,9 +33,7 @@ jobs:
         echo "build_number=$BUILD_NUMBER" >> $GITHUB_OUTPUT  
         echo "full_version=$VERSION" >> $GITHUB_OUTPUT
     - name: Accept Android SDK licenses
-      run: |
-        yes | sdkmanager --licenses || true
-        sdkmanager --install "ndk;29.0.14033849" --channel=0 || true 
+      run: yes | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --licenses || true
     - name: Build APK
       run: |
         flutter build apk --release \
