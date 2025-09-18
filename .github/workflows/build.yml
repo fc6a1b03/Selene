@@ -40,29 +40,18 @@ jobs:
       run: yes | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --licenses || true
     - name: Build APK (multi-arch)
       run: |
-        # Flutter 架构列表
-        ARCHS="android-arm android-arm64 android-x86 android-x86_64"
-        for arch in $ARCHS; do
-          flutter build apk --release \
-            --target-platform $arch \
-            --target=lib/main.dart \
-            --build-name=1.0.0 \
-            --build-number=1
-          # 映射可读文件名
-          case $arch in
-            android-arm)     suffix=armeabi-v7a ;;
-            android-arm64)   suffix=arm64-v8a   ;;
-            android-x86)     suffix=x86         ;;
-            android-x86_64)  suffix=x86_64      ;;
-          esac
-          mv build/app/outputs/flutter-apk/app-release.apk \
-             build/app/outputs/flutter-apk/selene-v${{ steps.version.outputs.full_version }}-${suffix}.apk
-        done
+        flutter build apk --release --split-per-abi \
+          --build-name=${{ steps.version.outputs.version_name }} \
+          --build-number=${{ steps.version.outputs.build_number }}
 
     - name: Rename APK
       run: |
-        mv build/app/outputs/flutter-apk/app-release.apk \
-           build/app/outputs/flutter-apk/selene-v${{ steps.version.outputs.full_version }}.apk
+        OUT=build/app/outputs/flutter-apk
+        VER=${{ steps.version.outputs.full_version }}
+        mv $OUT/app-armeabi-v7a-release.apk  $OUT/selene-v${VER}-armeabi-v7a.apk
+        mv $OUT/app-arm64-v8a-release.apk    $OUT/selene-v${VER}-arm64-v8a.apk
+        mv $OUT/app-x86-release.apk          $OUT/selene-v${VER}-x86.apk
+        mv $OUT/app-x86_64-release.apk       $OUT/selene-v${VER}-x86_64.apk
     - name: Push tag
       run: |
         git config user.name "github-actions[bot]"
