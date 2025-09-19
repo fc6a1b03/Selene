@@ -27,15 +27,19 @@ jobs:
 
     - name: Get dependencies  
       run: flutter pub get  
-    - name: Extract version from pubspec.yaml
-      id: version  
+    - name: Extract version & generate unique suffix
+      id: version
       run: |
-        VERSION=$(grep '^version:' pubspec.yaml | cut -d ' ' -f 2)  
-        VERSION_NAME=$(echo $VERSION | cut -d '+' -f 1)  
-        BUILD_NUMBER=$(echo $VERSION | cut -d '+' -f 2)  
-        echo "version_name=$VERSION_NAME" >> $GITHUB_OUTPUT  
-        echo "build_number=$BUILD_NUMBER" >> $GITHUB_OUTPUT  
-        echo "full_version=$VERSION" >> $GITHUB_OUTPUT
+        RAW_VERSION=$(grep '^version:' pubspec.yaml | cut -d' ' -f2)
+        VERSION_NAME=$(echo "$RAW_VERSION" | cut -d'+' -f1)
+        BUILD_NUMBER=$(echo "$RAW_VERSION" | cut -d'+' -f2)
+        SHORT_TIME=$(date +%y%m%d%H)
+        SHORT_HASH=$(git rev-parse --short=7 HEAD)
+        SUFFIX="${SHORT_TIME}-${SHORT_HASH}"
+        FULL_VERSION="${VERSION_NAME}+${BUILD_NUMBER}-${SUFFIX}"
+        echo "version_name=$VERSION_NAME" >> $GITHUB_OUTPUT
+        echo "build_number=$BUILD_NUMBER" >> $GITHUB_OUTPUT
+        echo "full_version=$FULL_VERSION" >> $GITHUB_OUTPUT
     - name: Accept Android SDK licenses
       run: yes | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --licenses || true
     - name: Build APK (multi-arch)
@@ -55,12 +59,12 @@ jobs:
       run: |
         git config user.name "github-actions[bot]"
         git config user.email "github-actions[bot]@users.noreply.github.com"
-        # 检测远程是否已有该 tag
-        if ! git ls-remote --tags origin "v${{ steps.version.outputs.full_version }}" | grep -q "v${{ steps.version.outputs.full_version }}"; then
-          git tag "v${{ steps.version.outputs.full_version }}"
-          git push origin "v${{ steps.version.outputs.full_version }}"
+        TAG="v${{ steps.version.outputs.full_version }}"
+        if git ls-remote --tags origin "$TAG" | grep -q "$TAG"; then
+          echo "Tag $TAG already exists, skip creating."
         else
-          echo "Tag v${{ steps.version.outputs.full_version }} already exists, skip creating."
+          git tag "$TAG"
+          git push origin "$TAG"
         fi
     - name: Release
       uses: softprops/action-gh-release@v2
