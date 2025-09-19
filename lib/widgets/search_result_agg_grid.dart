@@ -77,26 +77,9 @@ class _SearchResultAggGridState extends State<SearchResultAggGrid>
       }
     }
     
-    // 保持原有的顺序，只添加新的键
-    final finalOrderedKeys = <String>[];
-    
-    // 先添加已存在的键（保持原有顺序）
-    for (final key in _orderedKeys) {
-      if (newAggregatedResults.containsKey(key)) {
-        finalOrderedKeys.add(key);
-      }
-    }
-    
-    // 再添加新的键
-    for (final key in newOrderedKeys) {
-      if (!finalOrderedKeys.contains(key)) {
-        finalOrderedKeys.add(key);
-      }
-    }
-    
     setState(() {
       _aggregatedResults = newAggregatedResults;
-      _orderedKeys = finalOrderedKeys;
+      _orderedKeys = newOrderedKeys; // 直接使用新的顺序
     });
   }
 
@@ -127,8 +110,6 @@ class _SearchResultAggGridState extends State<SearchResultAggGrid>
         
         return GridView.builder(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: 3, // 严格3列布局
             childAspectRatio: itemWidth / itemHeight, // 精确计算宽高比

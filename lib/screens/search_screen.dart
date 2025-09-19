@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
@@ -9,10 +8,11 @@ import '../services/theme_service.dart';
 import '../services/sse_search_service.dart';
 import '../models/search_result.dart';
 import '../models/video_info.dart';
-import '../widgets/video_card.dart';
 import '../widgets/video_menu_bottom_sheet.dart';
+import '../widgets/custom_switch.dart';
 import '../widgets/favorites_grid.dart';
 import '../widgets/search_result_agg_grid.dart';
+import '../widgets/search_results_grid.dart';
 
 class SelectorOption {
   final String label;
@@ -86,17 +86,30 @@ class _SearchScreenState extends State<SearchScreen>
     }
 
     // Year sort
-    if (_yearSortOrder == SortOrder.desc) {
+    if (_yearSortOrder != SortOrder.none) {
       results.sort((a, b) {
-        final yearA = int.tryParse(a.year) ?? 0;
-        final yearB = int.tryParse(b.year) ?? 0;
-        return yearB.compareTo(yearA);
-      });
-    } else if (_yearSortOrder == SortOrder.asc) {
-      results.sort((a, b) {
-        final yearA = int.tryParse(a.year) ?? 0;
-        final yearB = int.tryParse(b.year) ?? 0;
-        return yearA.compareTo(yearB);
+        final yearAIsNum = int.tryParse(a.year) != null;
+        final yearBIsNum = int.tryParse(b.year) != null;
+
+        if (yearAIsNum && !yearBIsNum) {
+          return -1; // a (数字) 在 b (非数字) 前面
+        }
+        if (!yearAIsNum && yearBIsNum) {
+          return 1; // b (数字) 在 a (非数字) 前面
+        }
+        if (!yearAIsNum && !yearBIsNum) {
+          return 0; // 都是非数字，保持顺序
+        }
+
+        final yearA = int.parse(a.year);
+        final yearB = int.parse(b.year);
+
+        if (_yearSortOrder == SortOrder.desc) {
+          return yearB.compareTo(yearA);
+        } else {
+          // SortOrder.asc
+          return yearA.compareTo(yearB);
+        }
       });
     }
 
@@ -484,6 +497,7 @@ class _SearchScreenState extends State<SearchScreen>
       _searchError = null;
       _searchResults.clear();
       _searchProgress = null; // 清空进度信息
+      _useAggregatedView = true; // 默认开启聚合
       // 重置筛选和排序
       _selectedSource = 'all';
       _selectedYear = 'all';
@@ -533,6 +547,7 @@ class _SearchScreenState extends State<SearchScreen>
       _searchService.stopSearch();
     });
     _searchController.clear();
+    _searchFocusNode.requestFocus();
   }
 
   @override
@@ -543,39 +558,42 @@ class _SearchScreenState extends State<SearchScreen>
           backgroundColor: themeService.isDarkMode
               ? const Color(0xFF121212)
               : const Color(0xFFf5f5f5),
-          body: SingleChildScrollView(
-            controller: _scrollController,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const SizedBox(height: 20),
-                      // 搜索框
-                      _buildSearchBox(themeService),
-                      const SizedBox(height: 8),
+          body: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SizedBox(height: 8),
+                    // 搜索框
+                    _buildSearchBox(themeService),
+                    const SizedBox(height: 2),
 
-                      if (!_hasSearched) ...[
-                        // 搜索进度和结果
-                        if (_searchError != null)
-                          _buildSearchError(themeService),
-                      ],
+                    if (!_hasSearched) ...[
+                      // 搜索进度和结果
+                      if (_searchError != null)
+                        _buildSearchError(themeService),
                     ],
+                  ],
+                ),
+              ),
+              if (!_hasSearched) ...[
+                // 搜索历史（只有在从未搜索过时显示）
+                Expanded(
+                  child: SingleChildScrollView(
+                    child: _buildSearchHistory(themeService),
                   ),
                 ),
-                if (!_hasSearched) ...[
-                  // 搜索历史（只有在从未搜索过时显示）
-                  _buildSearchHistory(themeService),
-                ],
-                if (_hasSearched) ...[
-                  // 搜索结果区域，不添加额外padding
-                  _buildSearchResults(themeService),
-                ],
               ],
-            ),
+              if (_hasSearched) ...[
+                // 搜索结果区域，不添加额外padding
+                Expanded(
+                  child: _buildSearchResults(themeService),
+                ),
+              ],
+            ],
           ),
         );
       },
@@ -628,6 +646,8 @@ class _SearchScreenState extends State<SearchScreen>
                 ),
               // 搜索按钮
               IconButton(
+                padding: const EdgeInsets.only(left: 2.0, right: 8.0),
+                constraints: const BoxConstraints(),
                 icon: Icon(
                   LucideIcons.search,
                   color: _searchQuery.trim().isNotEmpty
@@ -646,7 +666,7 @@ class _SearchScreenState extends State<SearchScreen>
           border: InputBorder.none,
           contentPadding: const EdgeInsets.symmetric(
             horizontal: 16,
-            vertical: 16,
+            vertical: 12,
           ),
         ),
         style: GoogleFonts.poppins(
@@ -673,9 +693,10 @@ class _SearchScreenState extends State<SearchScreen>
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.only(left: 20.0, right: 16.0),
+          padding: const EdgeInsets.only(left: 22.0, right: 16.0),
           child: Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
+            crossAxisAlignment: CrossAxisAlignment.baseline, // 基线对齐
+            textBaseline: TextBaseline.alphabetic, // 使用字母基线
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
@@ -896,9 +917,11 @@ class _SearchScreenState extends State<SearchScreen>
       children: [
         // 标题行 - 有padding
         Padding(
-          padding: const EdgeInsets.only(left: 20.0, right: 16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          padding: const EdgeInsets.only(left: 22.0, right: 16.0),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.baseline, // 基线对齐
+            textBaseline: TextBaseline.alphabetic, // 使用字母基线
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Row(
                 crossAxisAlignment: CrossAxisAlignment.end,
@@ -926,97 +949,92 @@ class _SearchScreenState extends State<SearchScreen>
                               : const Color(0xFF7f8c8d),
                         ),
                       )
-                    else
-                      Transform.translate(
-                        offset: const Offset(2, -2), // 向上调整2像素
-                        child: const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            valueColor:
-                                AlwaysStoppedAnimation<Color>(Color(0xFF27ae60)),
-                          ),
-                        ),
-                      ),
-                  ],
-                  // 聚合开关移动到标题行最右侧
-                  if (_hasSearched && _searchResults.isNotEmpty) ...[
-                    const Spacer(),
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        Text(
-                          '聚合',
-                          style: GoogleFonts.poppins(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                            color: themeService.isDarkMode
-                                ? const Color(0xFFffffff)
-                                : const Color(0xFF2c3e50),
-                          ),
-                        ),
-                        const SizedBox(width: 4),
-                        Container(
-                          height: 20, // 限制高度
-                          constraints: const BoxConstraints(
-                            minHeight: 20,
-                            maxHeight: 20,
-                          ),
-                          child: Transform.scale(
-                            scale: 0.7, // 进一步缩小开关尺寸
-                            child: Switch(
-                              value: _useAggregatedView,
-                              onChanged: (value) {
-                                setState(() {
-                                  _useAggregatedView = value;
-                                });
-                              },
-                              activeThumbColor: Colors.white,
-                              activeTrackColor: const Color(0xFF27ae60), // 改为绿色
-                              inactiveThumbColor: Colors.white,
-                              inactiveTrackColor: themeService.isDarkMode
-                                  ? const Color(0xFF404040)
-                                  : const Color(0xFFE0E0E0),
-                              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                              trackOutlineColor:
-                                  WidgetStateProperty.all(Colors.transparent), // 去掉边框
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
                   ],
                 ],
               ),
-              // 筛选器行
-              if (_hasSearched && _searchResults.isNotEmpty) ...[
-                const SizedBox(height: 8),
-                _buildFilterSection(themeService),
-              ],
+              // 聚合开关
+              if (_hasSearched && _searchResults.isNotEmpty)
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Text(
+                      '聚合',
+                      style: GoogleFonts.poppins(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                        color: themeService.isDarkMode
+                            ? const Color(0xFFffffff)
+                            : const Color(0xFF2c3e50),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Transform.translate(
+                      offset: const Offset(0, 1.0),
+                      child: CustomSwitch(
+                        value: _useAggregatedView,
+                        onChanged: (value) {
+                          setState(() {
+                            _useAggregatedView = value;
+                          });
+                        },
+                        activeColor: const Color(0xFF27ae60),
+                        inactiveColor: themeService.isDarkMode
+                            ? const Color(0xFF444444)
+                            : const Color(0xFFcccccc),
+                        width: 32,
+                        height: 16,
+                      ),
+                    ),
+                  ],
+                ),
             ],
           ),
         ),
-        const SizedBox(height: 8),
-        // Grid区域 - 无padding，占满宽度
-        _useAggregatedView
-            ? SearchResultAggGrid(
-                key: ValueKey('agg_${_searchResults.length}'), // 添加key以优化重渲染
-                results: _filteredSearchResults,
-                themeService: themeService,
-                onVideoTap: widget.onVideoTap,
-                onGlobalMenuAction: _onGlobalMenuAction,
-                hasReceivedStart: _hasReceivedStart,
-              )
-            : _SearchResultsGrid(
-                key: ValueKey('list_${_searchResults.length}'), // 添加key以优化重渲染
-                results: _filteredSearchResults,
-                themeService: themeService,
-                onVideoTap: widget.onVideoTap,
-                onGlobalMenuAction: _onGlobalMenuAction,
-                hasReceivedStart: _hasReceivedStart,
-              ),
+        // 根据搜索状态显示不同内容
+        if (_hasSearched && _searchResults.isEmpty)
+          Expanded(
+            child: Center(
+              child: _buildEmptyStateContent(),
+            ),
+          )
+        else
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start, // 靠左对齐
+              children: [
+                // 筛选器行
+                if (_hasSearched && _searchResults.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Padding(
+                    padding: const EdgeInsets.only(left: 22.0, right: 16.0),
+                    child: _buildFilterSection(themeService),
+                  ),
+                ],
+                const SizedBox(height: 8),
+                // Grid区域 - 无padding，占满宽度
+                Expanded(
+                  child: _useAggregatedView
+                      ? SearchResultAggGrid(
+                          key: const ValueKey('agg_grid'),
+                          results: _filteredSearchResults,
+                          themeService: themeService,
+                          onVideoTap: widget.onVideoTap,
+                          onGlobalMenuAction: _onGlobalMenuAction,
+                          hasReceivedStart: _hasReceivedStart,
+                        )
+                      : SearchResultsGrid(
+                          key: const ValueKey('list_grid'),
+                          results: _filteredSearchResults,
+                          themeService: themeService,
+                          onVideoTap: widget.onVideoTap,
+                          onGlobalMenuAction: _onGlobalMenuAction,
+                          hasReceivedStart: _hasReceivedStart,
+                        ),
+                ),
+              ],
+            ),
+          ),
       ],
     );
   }
@@ -1026,6 +1044,72 @@ class _SearchScreenState extends State<SearchScreen>
       return '${_searchProgress!.completedSources}/${_searchProgress!.totalSources}';
     }
     return '0/0';
+  }
+
+  Widget _buildEmptyStateContent() {
+    final bool isSearchFinished = _hasReceivedStart &&
+        _searchProgress != null &&
+        _searchProgress!.completedSources >= _searchProgress!.totalSources;
+
+    if (isSearchFinished) {
+      // 未找到结果
+      return Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(
+            LucideIcons.folderSearch,
+            size: 80,
+            color: Color(0xFFbdc3c7),
+          ),
+          const SizedBox(height: 24),
+          Text(
+            '未找到结果',
+            style: GoogleFonts.poppins(
+              fontSize: 18,
+              fontWeight: FontWeight.w500,
+              color: const Color(0xFF7f8c8d),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            '请尝试更换关键词',
+            style: GoogleFonts.poppins(
+              fontSize: 14,
+              color: const Color(0xFF95a5a6),
+            ),
+          ),
+        ],
+      );
+    } else {
+      // 搜索中...
+      return Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(
+            LucideIcons.search,
+            size: 80,
+            color: Color(0xFFbdc3c7),
+          ),
+          const SizedBox(height: 24),
+          Text(
+            '搜索中...',
+            style: GoogleFonts.poppins(
+              fontSize: 18,
+              fontWeight: FontWeight.w500,
+              color: const Color(0xFF7f8c8d),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            '聚合搜索中，请稍候',
+            style: GoogleFonts.poppins(
+              fontSize: 14,
+              color: const Color(0xFF95a5a6),
+            ),
+          ),
+        ],
+      );
+    }
   }
 
   /// 处理视频菜单操作
@@ -1248,12 +1332,13 @@ class _SearchScreenState extends State<SearchScreen>
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: Row(
+        mainAxisAlignment: MainAxisAlignment.start, // 靠左对齐
         children: [
           _buildFilterPill('来源', _sourceOptions, _selectedSource, (newValue) {
             setState(() {
               _selectedSource = newValue;
             });
-          }),
+          }, isFirst: true),
           _buildFilterPill('标题', _titleOptions, _selectedTitle, (newValue) {
             setState(() {
               _selectedTitle = newValue;
@@ -1271,7 +1356,7 @@ class _SearchScreenState extends State<SearchScreen>
   }
 
   Widget _buildFilterPill(String title, List<SelectorOption> options,
-      String selectedValue, ValueChanged<String> onSelected) {
+      String selectedValue, ValueChanged<String> onSelected, {bool isFirst = false}) {
     bool isDefault = selectedValue == 'all';
 
     return GestureDetector(
@@ -1279,7 +1364,7 @@ class _SearchScreenState extends State<SearchScreen>
         _showFilterOptions(context, title, options, selectedValue, onSelected);
       },
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+        padding: EdgeInsets.fromLTRB(isFirst ? 0 : 8, 6, 8, 6),
         decoration: BoxDecoration(
           color: Colors.transparent,
           borderRadius: BorderRadius.circular(20),
@@ -1466,133 +1551,6 @@ class _SearchScreenState extends State<SearchScreen>
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-/// 搜索结果网格组件
-class _SearchResultsGrid extends StatefulWidget {
-  final List<SearchResult> results;
-  final ThemeService themeService;
-  final Function(VideoInfo)? onVideoTap;
-  final Function(VideoInfo, VideoMenuAction)? onGlobalMenuAction;
-  final bool hasReceivedStart;
-
-  const _SearchResultsGrid({
-    super.key,
-    required this.results,
-    required this.themeService,
-    this.onVideoTap,
-    this.onGlobalMenuAction,
-    required this.hasReceivedStart,
-  });
-
-  @override
-  State<_SearchResultsGrid> createState() => _SearchResultsGridState();
-}
-
-class _SearchResultsGridState extends State<_SearchResultsGrid>
-    with AutomaticKeepAliveClientMixin {
-  final PageCacheService _cacheService = PageCacheService();
-
-  @override
-  bool get wantKeepAlive => true;
-
-  @override
-  Widget build(BuildContext context) {
-    super.build(context); // 必须调用以支持 AutomaticKeepAliveClientMixin
-
-    if (widget.results.isEmpty && widget.hasReceivedStart) {
-      return _buildEmptyState();
-    }
-
-    if (widget.results.isEmpty && !widget.hasReceivedStart) {
-      return const SizedBox.shrink(); // 搜索开始但未收到start消息时，不显示任何内容
-    }
-
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        // 计算每列的宽度，确保严格三列布局
-        final double screenWidth = constraints.maxWidth;
-        final double padding = 16.0; // 左右padding
-        final double spacing = 12.0; // 列间距
-        final double availableWidth =
-            screenWidth - (padding * 2) - (spacing * 2); // 减去padding和间距
-        // 确保最小宽度，防止负宽度约束
-        final double minItemWidth = 80.0; // 最小项目宽度
-        final double calculatedItemWidth = availableWidth / 3;
-        final double itemWidth = math.max(calculatedItemWidth, minItemWidth);
-        final double itemHeight = itemWidth * 2.0; // 增加高度比例，确保有足够空间避免溢出
-
-        return GridView.builder(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 3, // 严格3列布局
-            childAspectRatio: itemWidth / itemHeight, // 精确计算宽高比
-            crossAxisSpacing: spacing, // 列间距
-            mainAxisSpacing: 16, // 行间距 - 与收藏grid保持一致
-          ),
-          itemCount: widget.results.length,
-          itemBuilder: (context, index) {
-            final result = widget.results[index];
-            final videoInfo = result.toVideoInfo();
-
-            return AnimatedContainer(
-              duration: const Duration(milliseconds: 300),
-              curve: Curves.easeOut,
-              child: VideoCard(
-                key: ValueKey(
-                    '${result.id}_${result.source}'), // 为每个卡片添加唯一key
-                videoInfo: videoInfo,
-                onTap: widget.onVideoTap != null
-                    ? () => widget.onVideoTap!(videoInfo)
-                    : null,
-                from: 'search',
-                cardWidth: itemWidth, // 传递计算出的宽度
-                onGlobalMenuAction: widget.onGlobalMenuAction != null
-                    ? (action) => widget.onGlobalMenuAction!(videoInfo, action)
-                    : null,
-                isFavorited: _cacheService.isFavoritedSync(
-                    videoInfo.source, videoInfo.id), // 同步检查收藏状态
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
-
-  Widget _buildEmptyState() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Icon(
-            Icons.search_off,
-            size: 80,
-            color: Color(0xFFbdc3c7),
-          ),
-          const SizedBox(height: 24),
-          Text(
-            '暂无搜索结果',
-            style: GoogleFonts.poppins(
-              fontSize: 18,
-              fontWeight: FontWeight.w500,
-              color: const Color(0xFF7f8c8d),
-            ),
-          ),
-          const SizedBox(height: 12),
-          Text(
-            '请尝试其他关键词或调整筛选条件',
-            style: GoogleFonts.poppins(
-              fontSize: 14,
-              color: const Color(0xFF95a5a6),
-            ),
-          ),
-        ],
       ),
     );
   }

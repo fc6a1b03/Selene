@@ -54,20 +54,7 @@ class FullscreenImageViewer extends StatefulWidget {
 }
 
 class _FullscreenImageViewerState extends State<FullscreenImageViewer> {
-  late TransformationController _transformationController;
   bool _isSaving = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _transformationController = TransformationController();
-  }
-
-  @override
-  void dispose() {
-    _transformationController.dispose();
-    super.dispose();
-  }
 
   /// 显示保存图片选择菜单
   void _showSaveImageMenu() {
@@ -368,67 +355,65 @@ class _FullscreenImageViewerState extends State<FullscreenImageViewer> {
                 child: GestureDetector(
                   onTap: () => Navigator.of(context).pop(), // 点击图片也关闭
                   onLongPress: _showSaveImageMenu, // 长按显示保存菜单
-                  child: InteractiveViewer(
-                    transformationController: _transformationController,
-                    minScale: 0.5,
-                    maxScale: 4.0,
-                    child: FutureBuilder<String>(
-                      future: getImageUrl(widget.imageUrl, widget.source),
-                      builder: (context, snapshot) {
-                        final String imageUrl = snapshot.data ?? widget.imageUrl;
-                        final headers = getImageRequestHeaders(imageUrl, widget.source);
-                        
-                        return CachedNetworkImage(
-                          imageUrl: imageUrl,
-                          httpHeaders: headers,
-                          fit: BoxFit.contain,
-                          placeholder: (context, url) => Container(
-                            color: backgroundColor,
-                            child: Center(
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  CircularProgressIndicator(
-                                    color: progressIndicatorColor,
-                                  ),
-                                  const SizedBox(height: 16),
-                                  Text(
-                                    '加载中...',
-                                    style: GoogleFonts.poppins(
-                                      color: textColor,
-                                      fontSize: 16,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                          errorWidget: (context, url, error) => Container(
-                            color: backgroundColor,
-                            child: Center(
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(
-                                    Icons.error_outline,
+                  child: FutureBuilder<String>(
+                    future: getImageUrl(widget.imageUrl, widget.source),
+                    builder: (context, snapshot) {
+                      final String imageUrl = snapshot.data ?? widget.imageUrl;
+                      final headers = getImageRequestHeaders(imageUrl, widget.source);
+                      
+                      return CachedNetworkImage(
+                        imageUrl: imageUrl,
+                        httpHeaders: headers,
+                        fit: BoxFit.fitWidth,
+                        width: MediaQuery.of(context).size.width,
+                        placeholder: (context, url) => Container(
+                          color: backgroundColor,
+                          width: MediaQuery.of(context).size.width,
+                          child: Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                CircularProgressIndicator(
+                                  color: progressIndicatorColor,
+                                ),
+                                const SizedBox(height: 16),
+                                Text(
+                                  '加载中...',
+                                  style: GoogleFonts.poppins(
                                     color: textColor,
-                                    size: 48,
+                                    fontSize: 16,
                                   ),
-                                  const SizedBox(height: 16),
-                                  Text(
-                                    '图片加载失败',
-                                    style: GoogleFonts.poppins(
-                                      color: textColor,
-                                      fontSize: 16,
-                                    ),
-                                  ),
-                                ],
-                              ),
+                                ),
+                              ],
                             ),
                           ),
-                        );
-                      },
-                    ),
+                        ),
+                        errorWidget: (context, url, error) => Container(
+                          color: backgroundColor,
+                          width: MediaQuery.of(context).size.width,
+                          child: Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.error_outline,
+                                  color: textColor,
+                                  size: 48,
+                                ),
+                                const SizedBox(height: 16),
+                                Text(
+                                  '图片加载失败',
+                                  style: GoogleFonts.poppins(
+                                    color: textColor,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    },
                   ),
                 ),
               ),
