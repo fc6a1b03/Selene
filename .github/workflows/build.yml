@@ -30,8 +30,9 @@ jobs:
     - name: Extract version & generate unique suffix
       id: version
       run: |
-        VERSION_NAME=$(grep '^version:' pubspec.yaml | cut -d' ' -f2 | cut -d'+' -f1)
-        BUILD_NUMBER=$(date +%s)
+        RAW_VERSION=$(grep '^version:' pubspec.yaml | cut -d' ' -f2)
+        VERSION_NAME=$(echo "$RAW_VERSION" | cut -d'+' -f1)
+        BUILD_NUMBER=$(echo "$RAW_VERSION" | cut -d'+' -f2)
         SHORT_TIME=$(date +%y%m%d%H)
         SHORT_HASH=$(git rev-parse --short=7 HEAD)
         SUFFIX="${SHORT_TIME}-${SHORT_HASH}"
