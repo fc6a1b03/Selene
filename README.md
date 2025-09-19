@@ -18,11 +18,6 @@
 ### 文件重命名
 将默认的APK文件名重命名为更具描述性的格式：
 ```
-selene-v{版本号}-{架构}.apk
+selene-v{版本号}+{构建号}-{日期}-{GIT哈希}-{架构}.apk
+selene-v{VERSION_NAME}+{BUILD_NUMBER}-{YYMMDDHH}-{GIT_HASH}-{arch}.apk
 ```
-
-### 输出产物
-每次成功构建将产生三个APK文件：
-- `selene-v{版本}-armeabi-v7a.apk`
-- `selene-v{版本}-arm64-v8a.apk` 
-- `selene-v{版本}-x86_64.apk`
