@@ -18,6 +18,7 @@ import 'movie_screen.dart';
 import 'tv_screen.dart';
 import 'anime_screen.dart';
 import 'show_screen.dart';
+import 'player_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -288,19 +289,15 @@ class _HomeScreenState extends State<HomeScreen> {
 
   /// 处理视频卡片点击
   void _onVideoTap(PlayRecord playRecord) {
-    // TODO: 实现视频播放逻辑
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          '点击了: ${playRecord.title}',
-          style: GoogleFonts.poppins(color: Colors.white),
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => PlayerScreen(
+          source: playRecord.source,
+          id: playRecord.id,
+          title: playRecord.title,
+          year: playRecord.year,
         ),
-        backgroundColor: const Color(0xFF2c3e50),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
-        ),
-        margin: const EdgeInsets.all(16),
       ),
     );
   }
@@ -329,19 +326,15 @@ class _HomeScreenState extends State<HomeScreen> {
   void _onGlobalMenuAction(PlayRecord playRecord, VideoMenuAction action) {
     switch (action) {
       case VideoMenuAction.play:
-        // 播放视频
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              '播放: ${playRecord.title}',
-              style: GoogleFonts.poppins(color: Colors.white),
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => PlayerScreen(
+              source: playRecord.source,
+              id: playRecord.id,
+              title: playRecord.title,
+              year: playRecord.year,
             ),
-            backgroundColor: const Color(0xFF27AE60),
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
-            margin: const EdgeInsets.all(16),
           ),
         );
         break;
