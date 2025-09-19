@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:fvp/fvp.dart';
 import 'screens/login_screen.dart';
 import 'screens/home_screen.dart';
 import 'services/user_data_service.dart';
@@ -9,6 +10,9 @@ import 'services/douban_cache_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // 注册 fvp 插件
+  registerWith();
   
   // 初始化豆瓣缓存服务
   final cacheService = DoubanCacheService();
