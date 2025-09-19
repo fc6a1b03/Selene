@@ -157,7 +157,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
               color: Colors.black,
             ),
             VideoPlayerWidget(
-              videoUrl: 'https://test-videos.co.uk/vids/bigbuckbunny/mp4/h264/1080/Big_Buck_Bunny_1080_10s_30MB.mp4',
+              videoUrl: 'http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
               aspectRatio: 16 / 9,
               onBackPressed: _onBackPressed,
               onFullscreenChange: _handleFullscreenChange,
