@@ -51,10 +51,9 @@ dependencies:
   dio: ^5.4.0
   gal: ^2.3.0
   app_settings: ^6.1.1
-  universal_video_controls: ^1.1.1
-  universal_video_controls_video_player: ^1.0.1
-  video_player: ^2.8.2
   fvp: ^0.34.0
+  chewie: ^1.7.4
+  video_player: ^2.8.2
 
 dev_dependencies:
   flutter_test:
